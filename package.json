@@ -1,0 +1,11 @@
+{
+  "name": "architect_skill",
+  "version": "1.0.0",
+  "description": "Architecture Thinking and Lifecycle Orchestration Engine for AI Coding Agents",
+  "scripts": {
+    "test": "pytest -v",
+    "lint": "python3 -m py_compile run.py skills/00_orchestrator/orchestrate_architecture_lifecycle.py tests/test_fsm_orchestrator.py"
+  },
+  "author": "swizard",
+  "license": "MIT"
+}

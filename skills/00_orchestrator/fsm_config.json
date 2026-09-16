@@ -1,0 +1,120 @@
+{
+  "machine_name": "architecture_lifecycle_fsm",
+  "version": "1.0.0",
+  "workspace_root": "docs/architecture",
+  "state_persistence_file": ".state.json",
+  "states": {
+    "INIT": {
+      "description": "架构生命周期初始化阶段",
+      "skills": [],
+      "exit_gate": {
+        "required_artifacts": [],
+        "hitl_required": false
+      },
+      "transitions": {
+        "START": "GRILLING"
+      }
+    },
+    "GRILLING": {
+      "description": "苏格拉底式需求深挖阶段：识别核心动机、消除伪需求、提炼不变量",
+      "skills": [
+        "skills/01_grounding/grill_architecture_requirements.md"
+      ],
+      "exit_gate": {
+        "required_artifacts": [
+          "00-grounding/grounding-spec.json"
+        ],
+        "hitl_required": true,
+        "review_prompt": "请确认需求深挖提炼的业务驱动力、NFR 目标与核心不变量是否准确？确认后将推进至基础约束提炼阶段。"
+      },
+      "transitions": {
+        "APPROVE": "GROUNDING",
+        "REJECT": "GRILLING"
+      }
+    },
+    "GROUNDING": {
+      "description": "约束与质量属性矩阵确立阶段：输出量化 NFR 与硬性不变量编目",
+      "skills": [
+        "skills/01_grounding/distill_nfr_matrix.md",
+        "skills/01_grounding/catalog_invariants_and_constraints.md"
+      ],
+      "exit_gate": {
+        "required_artifacts": [
+          "01-grounding/nfr-matrix.md",
+          "01-grounding/constraints-and-assumptions.md"
+        ],
+        "hitl_required": false
+      },
+      "transitions": {
+        "ARTIFACTS_VALIDATED": "MODELING"
+      }
+    },
+    "MODELING": {
+      "description": "结构建模与概念抽象阶段：输出 C4 Context (L1)、领域模型与 C4 Container (L2)",
+      "skills": [
+        "skills/02_structural_modeling/generate_system_context.md",
+        "skills/02_structural_modeling/derive_logical_domain_model.md",
+        "skills/02_structural_modeling/synthesize_architecture_overview.md"
+      ],
+      "exit_gate": {
+        "required_artifacts": [
+          "02-models/c4-context.mmd",
+          "02-models/domain-logical-model.md",
+          "02-models/c4-container-overview.mmd"
+        ],
+        "hitl_required": false
+      },
+      "transitions": {
+        "MODELS_VALIDATED": "CONTRACTS"
+      }
+    },
+    "CONTRACTS": {
+      "description": "决策固化与强契约签署阶段：沉淀 MADR 决策、输出 OpenAPI 契约与 FMEA 容灾矩阵",
+      "skills": [
+        "skills/03_contracts_and_decisions/record_architecture_decision.md",
+        "skills/03_contracts_and_decisions/scaffold_boundary_contracts.md",
+        "skills/03_contracts_and_decisions/generate_failure_resilience_matrix.md"
+      ],
+      "exit_gate": {
+        "required_artifacts": [
+          "03-decisions/adr-index.md",
+          "04-contracts/openapi.yaml",
+          "03-decisions/failure-resilience-matrix.md"
+        ],
+        "hitl_required": true,
+        "review_prompt": "请审查生成的 ADR 架构决策、强类型接口契约与 FMEA 容灾降级矩阵。签署确认后将进入工程骨架搭建。"
+      },
+      "transitions": {
+        "APPROVE": "SCAFFOLDING",
+        "REJECT": "MODELING"
+      }
+    },
+    "SCAFFOLDING": {
+      "description": "工程骨架生成与交付排期阶段：创建六边形工程目录、生成 .agent-rules.md 与敏捷路线图",
+      "skills": [
+        "skills/04_execution_and_scaffolding/bootstrap_walking_skeleton.md",
+        "skills/04_execution_and_scaffolding/sequence_delivery_milestones.md"
+      ],
+      "exit_gate": {
+        "required_artifacts": [
+          ".agent-rules.md",
+          "04-execution/roadmap-and-first-step.md",
+          "04-execution/walking-skeleton-spec.json"
+        ],
+        "hitl_required": false
+      },
+      "transitions": {
+        "SKELETON_INITIALIZED": "FINALIZED"
+      }
+    },
+    "FINALIZED": {
+      "description": "全套架构资产与防跑偏围栏锁定完毕，系统准备就绪",
+      "skills": [],
+      "exit_gate": {
+        "required_artifacts": [],
+        "hitl_required": false
+      },
+      "transitions": {}
+    }
+  }
+}
