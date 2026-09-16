@@ -77,3 +77,14 @@ python run.py --step
 python run.py --init-sample-assets
 python run.py --auto-approve
 ```
+
+---
+
+## 5. CI 持续集成与自动化流水线 (GitHub Actions)
+
+项目内置 `.github/workflows/ci.yml` 自动化工作流，在提交或拉取请求时自动触发：
+1. **多版本矩阵验证**：覆盖 Python 3.11 与 3.12 运行时。
+2. **静态语法检查**：执行 `npm run lint` 验证 Python 核心逻辑与测试模块编译合法性。
+3. **单元测试回归**：执行 `npm run test`（`pytest -v`），验证门禁拦截、状态持久化与全生命周期流转。
+4. **端到端冒烟测试**：运行 `run.py` 驱动状态机自检，验证演进闭环与退出状态。
+
