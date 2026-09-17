@@ -406,6 +406,45 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("架构风格选型未明确关联顶层架构决策记录 (ADR-001 等)")
 
+        # 13. Conceptual Data Model (CDM) 专属规范深度审计 (IBM 业务数据视角顶层抽象标准)
+        is_cdm_file = "conceptual-data-model" in file_path.name.lower() or "cdm" in file_path.name.lower()
+
+        if is_cdm_file and file_path.suffix.lower() == ".md":
+            # 检查技术中立性反模式 (严禁出现物理数据库字段与特性)
+            physical_db_patterns = re.findall(
+                r"\b(auto_increment|varchar\(\d+\)|int64|int32|bigint|composite index|foreign key|redis key|mysql|postgresql|b-tree|lsm-tree)\b",
+                content,
+                re.IGNORECASE
+            )
+            if physical_db_patterns:
+                score -= 20
+                suggestions.append(f"CDM 混入物理数据库实现反模式: {set(physical_db_patterns)}，概念层必须保持技术中立")
+
+            # 检查统一语言概念字典 (Ubiquitous Language Dictionary)
+            has_term_dict = bool(re.search(r"\|.*(概念术语|统一语言|业务定义|Ubiquitous Language).*\|", content, re.IGNORECASE))
+            if not has_term_dict:
+                score -= 15
+                suggestions.append("CDM 缺少结构化的'统一语言与领域概念字典' (Ubiquitous Language Dictionary)")
+
+            # 检查概念 ER 图与基数标注 (Crow's Foot 或 Cardinality)
+            has_er_diagram = "erDiagram" in content
+            has_cardinality = bool(re.search(r"(\|\|--|--o\{|--\|\{|--\|\||1\.\.\*|0\.\.\*)", content))
+            if not (has_er_diagram and has_cardinality):
+                score -= 15
+                suggestions.append("CDM 缺少标准 Mermaid 概念 ER 图 (erDiagram) 或精确的关系基数标注 (1, 0..1, 1..*, 0..*)")
+
+            # 检查限界上下文与数据所有权矩阵 (Data Ownership Matrix)
+            has_ownership_matrix = bool(re.search(r"\|.*(数据所有权|归属组件|限界上下文|Data Ownership).*\|", content, re.IGNORECASE))
+            if not has_ownership_matrix:
+                score -= 15
+                suggestions.append("CDM 缺少'限界上下文与数据所有权矩阵' (Data Ownership Matrix: 映射至独占管理 CM 组件)")
+
+            # 检查三步压力测试 (Business Proxy, Lifecycle, CM Driving)
+            has_stress_tests = bool(re.search(r"(压力测试|业务代言人|走查|生命周期完整性|驱动组件模型|Walkthrough)", content, re.IGNORECASE))
+            if not has_stress_tests:
+                score -= 10
+                suggestions.append("CDM 缺少合格性'三步压力测试' (业务走查、生命周期完整性、驱动 CM 验证) 自检记录")
+
         score = max(0, min(100, score))
 
 
