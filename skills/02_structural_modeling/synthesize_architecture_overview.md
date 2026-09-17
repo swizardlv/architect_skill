@@ -1,96 +1,113 @@
-# Skill: synthesize_architecture_overview (双环容器拓扑建模器 - C4 L2)
+# Skill: synthesize_architecture_overview (架构概览图 AOD 建模器)
 
-## 1. System Role & Objective
-你是分布式系统与混合智能架构专家。你的核心使命是吸收现代化架构制图原则（参考 `architecture_diagramming_principles.md`），将逻辑模型与质量属性投影为物理容器与运行时组件拓扑图（C4 Level 2 Container Diagram）。重点展现系统内部“**确定性控制外壳（Deterministic Shell）**”与“**概率推理内核（Stochastic Core）**”以及“**受限执行沙箱（Execution Sandbox）**”的三重物理边界、分级存储、通信总线与隔离机制，输出持久化文件 `02-models/c4-container-overview.mmd`。
-
----
-
-## 2. Operational Guidelines
-
-### 2.1 核心执行原则
-1. **动静解耦与三重物理防线**：
-   - **确定性控制外壳 (Deterministic Shell)**：API 网关 / CLI、FSM 状态机调度引擎、PostgreSQL/SQLite 状态数据库。负责控制流推进、强类型反序列化校验、超时强杀、门禁拦截与不可变审计（ACID）。
-   - **概率推理内核 (Stochastic Core)**：认知智能体执行器、上下文感知与剪枝中间件、Redis 短期账本与易失性工作记忆。负责语义理解、差异生成、假设反思与推翻。
-   - **受限执行沙箱 (Execution Sandbox)**：Docker 容器或受限子进程。负责只读契约保护、受控行级补丁写入与带 30s 强杀超时的单元测试运行。
-2. **分级存储原则（Tiered Storage Architecture）**：
-   - 核心状态跃迁与架构终态资产 -> 关系型事务存储（ACID）。
-   - 易失性会话上下文、已证伪负向假设账本 -> 高速内存缓存（Redis / In-Memory）。
-3. **正交避障与高信噪比走线**：
-   - 外部调用经网关统一入栈；组件通信必须带具体协议与业务操作动词；
-   - 绝不出现交叉横贯无关组件的连线。
-
-### 2.2 严格禁止事项 (Anti-Patterns)
-- **禁止让模型直接持有全局写权限**：推理内核绝不能直接绕过外壳写入生产数据库或物理文件。
-- **禁止边界模糊**：严禁将确定性状态检查与概率性 Prompt 推理混在同一进程中强耦合。
+> 本技能吸纳 IBM 经典架构方法论（Team Solution Design / Architecture Thinking）中对 **AOD（Architecture Overview Diagram，架构概览图）**“价值百万美元的一张图”的最高标准。AOD 是整个系统架构的“门面”与“全景地图”——向上让业务决策者看懂系统的商业价值与核心边界，向下为各领域架构师与技术主管划定子系统职责与交互契约。
 
 ---
 
-## 3. Strict Input/Output Schema
+## 1. 优秀 AOD 的四大核心标准 (What Makes a Good AOD)
 
-### 3.1 依赖输入资产
-- `docs/architecture/01-grounding/nfr-matrix.md`
-- `docs/architecture/02-models/domain-logical-model.md`
-- `skills/02_structural_modeling/architecture_diagramming_principles.md`
+在专业架构评审（Architecture Review Board / Board Certification）中，一张优秀的 AOD 必须满足以下四大关键特征：
 
-### 3.2 产出文件与规范
-1. **架构全景文字综述**：`docs/architecture/02-models/architecture-overview.md`
-   - 遵从 `templates/architecture-overview-template.md`。
-   - 详细论述系统使命、核心设计哲学、战略限界上下文映射表（Bounded Context Map）与集成边界文字说明。
-2. **物理容器图拓扑**：`docs/architecture/02-models/c4-container-overview.mmd`
-   - 标准 Mermaid 拓扑图，注入语义调色板：
+### 1.1 严格守住“一层抽象”，绝不混淆逻辑与物理
+- **正确做法**：AOD 仅表达**概念/高层逻辑视角（Conceptual / High-Level Logical View）**。展示的是“统一接入反向代理”、“极速事前穿透风控”、“单线程确定性撮合核心”、“主数据分发中心”，而不是具体的“Spring Boot 3.2”、“Nginx + Lua”、“Redis Cluster 16GB”、“MySQL 8.0”、“Kafka 3节点”。
+- **反模式 (Anti-Patterns)**：塞满具体物理软件与部署规格。一旦混入物理细节，AOD 的沟通跨度就会断层，沦为杂乱的“物理拓扑初稿”，失去概念抽象价值。物理实现细节必须严格下沉至 **Operational Model (OM / DM)**。
+
+### 1.2 边界清晰，内外部系统界限分明
+- 清晰区分**作用域内（In-Scope）**与**作用域外（Out-of-Scope / Legacy / Third-Party）**。
+- 通过视觉围栏（Bounding Box / Boundary）清晰表达：
+  1. 哪些是本期需要构建或重点改造的核心业务能力域？
+  2. 哪些是既有外部依赖系统（如企业 ERP、核心老账务总账）？
+  3. 哪些是第三方外部公共服务（如监管网关、支付渠道、公有云外部 API）？
+
+### 1.3 “有主有次”的视觉层级与信息流
+- **30 秒一眼看清**：
+  1. **谁是主叫方（Actors/Channels）**：做市商、高频量化机构、风控管理员、企业合作伙伴。
+  2. **主干业务流向何处**：核心数据流与控制流如何穿透系统。
+- **连线方向与语义契约**：所有连线必须具备明确的方向性，并清晰标注业务交互语义（如 `1. 提交委托 (SBE/TCP)`、`2. 广播深度行情 (Multicast)`、`3. 异步持久化 (I/O Stream)`），严禁出现无语义标注的“光板线”。
+
+### 1.4 完整的“架构图例（Legend）”与图说叙事契约
+- **图例契约（Legend）**：图中的每一种视觉元素（实线、虚线、不同底色、不同围栏边框）必须在图例中有唯一对应的解释。
+- **架构叙事文本（Accompanying Narrative）**：**AOD 绝不能只有一张裸图**，必须配套 1~2 页的文字说明，阐明该架构如何支撑核心业务目标（Key Drivers）与关键非功能属性（NFRs）。
+
+---
+
+## 2. IBM 经典 AOD 标准骨架（“三横两纵”分层分区布局）
+
+标准 AOD 采用“三横两纵”或“分层分区”的经典布局，使干系人一目了然：
 
 ```mermaid
-graph TB
-    %% 样式表定义
-    classDef feStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
-    classDef shellStyle fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a;
-    classDef coreEngineStyle fill:#eff6ff,stroke:#1d4ed8,stroke-width:3px,color:#1e3a8a;
-    classDef dbStyle fill:#f0fdf4,stroke:#15803d,stroke-width:2px,color:#14532d;
-    classDef cacheStyle fill:#fff1f2,stroke:#e11d48,stroke-width:2px,color:#881337;
-    classDef sandboxStyle fill:#faf5ff,stroke:#7e22ce,stroke-width:2px,color:#581c87;
-
-    subgraph ClientLayer ["接入与呈现层 (Access Layer)"]
-        cli["🖥️ 主控 CLI / API Gateway<br/>[参数解析 / 鉴权拦截 / 格式反序列化]"]:::feStyle
+flowchart TB
+    subgraph ChannelsLayer ["【三横之首】接入与交互渠道层 (Channels & Actors)"]
+        direction LR
+        Actor1["外部交易员 / 最终用户"]
+        Actor2["机构合作伙伴 / API 客户端"]
+        ChannelGW["接入信道与安全网关"]
     end
 
-    subgraph DeterministicShell ["确定性控制外壳 (Deterministic Shell)"]
-        fsmEngine["⚙️ 状态机调度引擎 (FSM Engine)<br/>[单向基线演进 / 门禁自检 / 挂起审批]"]:::shellStyle
-        stateDb[("🗄️ 持久化状态库 (SQLite / PostgreSQL)<br/>[状态记录 / 阶段元数据 / 审计日志 (ACID)]")]:::dbStyle
+    subgraph CoreSystemBoundary ["【三横之中】核心系统业务能力域 (In-Scope Core Boundary)"]
+        direction TB
+        SubsystemA["核心业务逻辑子系统 A"]
+        SubsystemB["核心业务计算子系统 B"]
+        SubsystemC["状态管理与流水仲裁"]
     end
 
-    subgraph StochasticCore ["概率推理内核 (Stochastic Core)"]
-        agentRunner["🧠 认知智能体执行器 (Agent Core)<br/>[语义推理 / 补丁推演 / 负向反思]"]:::coreEngineStyle
-        contextProxy["🧩 上下文剪枝中间件<br/>[AST 骨架压缩 / 错误堆栈剪枝 / 提示词组装]"]:::coreEngineStyle
-        memoryCache[("⚡ 短期工作记忆与账本 (Redis / Cache)<br/>[会话上下文 / 已证伪假设账本]")]:::cacheStyle
+    subgraph DataAndIntegration ["【三横之底】企业集成与数据资产 (Integration & Data Assets)"]
+        direction LR
+        EventBus["高吞吐事件骨干网 / 消息总线"]
+        StorageHub["不可变交易账本 / 数据资产总库"]
     end
 
-    subgraph SandboxLayer ["受限执行与验证沙箱 (Execution Sandbox)"]
-        sandboxEnv["🛡️ 受控运行沙箱 (Docker / Subprocess)<br/>[只读契约锁定 / 补丁应用 / 30s超时测试强杀]"]:::sandboxStyle
+    subgraph ExternalSystems ["【两纵之一】外部系统边界 (Out-of-Scope External Systems)"]
+        direction TB
+        LegacyCore["企业遗留老核心系统 (Legacy Core)"]
+        ThirdParty["第三方清算 / 监管外部服务"]
     end
 
-    %% 控制面与数据面连线
-    cli -->|"1. 提交设计任务 / 审批指令 [CLI / HTTP]"| fsmEngine
-    fsmEngine -->|"2. 写入状态跃迁与审计日志 [SQL]"| stateDb
-    fsmEngine -->|"3. 下发当前阶段认知任务包 [Internal Call]"| agentRunner
-    
-    agentRunner <-->|"4. 获取剪枝视图与提取符号 [Local Protocol]"| contextProxy
-    contextProxy <-->|"5. 读写短期上下文与负向账本 [RESP / Key-Value]"| memoryCache
-    
-    agentRunner -->|"6. 应用精准行级补丁 [Sandbox IPC via Port]"| sandboxEnv
-    sandboxEnv -->|"7. 返回带超时拦截的测试断言与剪枝堆栈 [JSON Output]"| agentRunner
-    
-    agentRunner -->|"8. 交付阶段生成资产 [Artifacts Commit]"| fsmEngine
+    subgraph CrossCuttingConcerns ["【两纵之二】横切关注点底座 (Cross-Cutting Concerns)"]
+        direction LR
+        SecurityIAM["统一安全、认证与审计 (Security & IAM)"]
+        Observability["全链路可观测性 (Metrics, Traces, Telemetry)"]
+        HighAvailability["高可用与双机仲裁控制 (HA & Quorum)"]
+    end
+
+    subgraph LegendBox ["架构图例 (Legend)"]
+        direction LR
+        L1["[实线框] 本期核心构建 (In-Scope)"]
+        L2["[虚线框] 外部既有/第三方依赖 (Out-of-Scope)"]
+        L3["[实线箭头] 核心控制/数据主干流"]
+        L4["[虚线箭头] 旁路管理/异步审计流"]
+    end
+
+    ChannelsLayer -->|"主干业务输入"| CoreSystemBoundary
+    CoreSystemBoundary <-->|"状态同步与事件驱动"| DataAndIntegration
+    CoreSystemBoundary -.->|"协议防腐集成 [via ACL]"| ExternalSystems
+    CrossCuttingConcerns -.->|"横向守护赋能"| CoreSystemBoundary
 ```
 
 ---
 
-## 4. Gatekeeper Exit Criteria (准出门禁自查清单)
-在推进阶段前，必须完成以下自检：
-- [ ] 输出系统的架构全景概览文档 `docs/architecture/02-models/architecture-overview.md`，包含设计原则与战略上下文映射。
-- [ ] 严格清晰地将系统划分为接入层、确定性外壳、概率推理内核与隔离沙箱四层。
-- [ ] 所有核心组件（网关、FSM 引擎、DB、Agent 运行器、剪枝中间件、缓存、沙箱）均具名且职责清晰。
-- [ ] 存储分层明确：区分了 ACID 持久化数据库与高速易失性账本缓存。
-- [ ] 连线涵盖了端到端调用闭环，标注了协议、步骤编号与操作语义。
-- [ ] 应用了标准组件语义配色，Mermaid 语法格式正确。
-- [ ] 产出物已持久化落盘至 `docs/architecture/02-models/c4-container-overview.mmd`。
+## 3. AOD 合格性“3 分钟压力测试”（The 3-Minute Test）
 
+在架构评审会前，架构师必须通过以下 4 个问题进行自检：
+
+1. **白板复述测试 (Whiteboard Test)**：
+   - 架构师脱离电脑，能否在白板上 3 分钟内画出该 AOD 骨架，并向非技术的业务高管讲清楚价值闭环？如果画不出，说明概念切分过细、主干失焦。
+2. **职责定位测试 (Responsibility Test)**：
+   - 抛出一个核心业务场景（如：“当发生一笔撮合成交时”或“当用户发起退款时”），在图上能否一眼看出信息穿过了哪几个框？如果同一个职责在多个框中反复纠缠，说明子系统职责划分不清。
+3. **技术无关测试 (Technology Agnostic Test)**：
+   - 如果把底层的存储介质从 Oracle 换为分布式数据库，或者把消息中间件从 Kafka 换为内部无锁 RingBuffer，**这张 AOD 需要重新画吗？** 如果需要，说明混入了物理实现细节，严重违反了 AOD 的抽象层级原则。
+4. **横切可见测试 (Cross-Cutting Test)**：
+   - 当安全负责人问“安全合规与权限在哪里校验”，运维负责人问“高可用容灾与监控告警在哪里统一汇聚”，在图上的横切关注点中是否有清晰、显式的承载位置？
+
+---
+
+## 4. 交付文件与门禁规范
+
+- **Mermaid 架构图源文件**：`02-architecture-design/aod.mmd`
+- **架构全景说明书**：`02-architecture-design/architecture-overview-diagram.md`
+  - 必须包含：
+    1. AOD 架构图（内嵌标准 Mermaid 代码块并自带 Legend 图例）。
+    2. 核心设计哲学与商业价值对齐说明（支撑哪些 Key Drivers 与量化 NFRs）。
+    3. 子系统职责边界与交互协议清单表。
+    4. 横切关注点（安全、观测、高可用）保障机制论述。
+    5. 3 分钟合格性压力测试自检记录。

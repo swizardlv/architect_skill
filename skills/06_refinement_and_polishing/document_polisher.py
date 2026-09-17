@@ -79,7 +79,39 @@ class ArchitectureDocumentPolisher:
             score -= 20
             suggestions.append("缺乏表格、图元或代码/DDL等结构化工程表达，纯文字叙述不利于评审")
 
+        # 4. AOD (Architecture Overview Diagram) 专属规范深度审计 (IBM 标准)
+        if "architecture-overview" in file_path.name.lower() or "aod" in file_path.name.lower():
+            # 检查是否混入具体物理软件反模式
+            physical_stack_anti_patterns = re.findall(
+                r"\b(mysql|postgresql|redis|kafka|nginx|docker|spring boot|mongodb|rocketmq)\b",
+                content,
+                re.IGNORECASE
+            )
+            if physical_stack_anti_patterns:
+                score -= 15
+                suggestions.append(f"AOD 混入具体物理技术栈反模式: {set(physical_stack_anti_patterns)}，应抽象为逻辑能力")
+
+            # 检查是否有图例 Legend
+            has_legend = bool(re.search(r"(Legend|架构图例)", content, re.IGNORECASE))
+            if not has_legend:
+                score -= 10
+                suggestions.append("AOD 缺少统一架构图例 (Legend)，每种线条与颜色必须自解释")
+
+            # 检查是否包含横切关注点
+            has_cross_cutting = bool(re.search(r"(Cross-Cutting|横切关注点|横切守护)", content, re.IGNORECASE))
+            if not has_cross_cutting:
+                score -= 10
+                suggestions.append("AOD 缺少横切关注点底座 (Cross-Cutting Concerns: 安全/可观测/高可用)")
+
+            # 检查是否包含 3 分钟压力测试 (The 3-Minute Test)
+            if file_path.suffix.lower() == ".md":
+                has_3min_test = bool(re.search(r"(3-Minute Test|3分钟|白板复述)", content, re.IGNORECASE))
+                if not has_3min_test:
+                    score -= 10
+                    suggestions.append("AOD 缺少合格性 '3 分钟压力测试' (The 3-Minute Test) 评审自检表")
+
         score = max(0, min(100, score))
+
 
         return DocumentQualityReport(
             file_path=str(file_path.relative_to(self.ws)),

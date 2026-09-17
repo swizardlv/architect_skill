@@ -71,23 +71,29 @@ classDef mqStyle fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#581c87;
 
 ---
 
-## 4. 架构可视化的五重视图矩阵 (The 5 Visual Dimensions)
+## 4. 架构可视化的三层抽象与五维图谱矩阵 (Abstraction Levels & Views)
 
-为了从宏观到微观精准还原系统真相，架构师应依据场景选择或组合以下五类图谱：
+架构设计必须守住“**严格分层抽象**”铁律，严禁跨层混淆：
+1. **概念与高层逻辑层 (AOD - Architecture Overview Diagram)**：面向业务赞助人与架构评审委员会，**技术无关 (Technology Agnostic)**。表达的是“统一接入反向代理”、“极速事前穿透风控”、“单线程确定性撮合核心”、“主数据分发中心”，严禁混入“MySQL 8.0”、“Kafka 3节点”、“Spring Boot”等具体物理软件。
+2. **逻辑组件与交互层 (CM - Component Model)**：面向研发主管与领域专家。界定子系统内部的逻辑组件、接口边界、调用时序（Sequence）与数据流向（Data Flow）。
+3. **基础设施与拓扑层 (OM - Operational Model / DM)**：面向运维 SRE 与底层工程师。详细标定物理机型、网络分区、机房分布、NUMA 绑核、操作系统内核参数与具体数据库中间件实例。
 
 ```mermaid
-flowchart LR
-    D1["1. 系统上下文<br/>(System Context L1)<br/>生态位与防腐边界"] --> D2["2. 容器拓扑<br/>(Container Overview L2)<br/>双环解耦与物理服务"]
-    D2 --> D3["3. 领域与状态模型<br/>(Logical & Lifecycle L3)<br/>聚合根与单向状态机"]
-    D2 --> D4["4. 关键交互时序<br/>(Interaction Sequence)<br/>认知反思与调用生命周期"]
-    D2 --> D5["5. 数据流向与管道<br/>(Data Flow Pipeline)<br/>读写分离与分级存储"]
+flowchart TD
+    L1["1. AOD (架构概览图)<br/>[价值百万美元的一张图 - 概念与高层逻辑视角 / 业务价值与内外部边界 / 技术无关]"]
+    L2["2. CM (组件与交互模型)<br/>[逻辑视角 - 组件职责 / 接口协议 / 交互时序 Sequence / 数据流 DataFlow]"]
+    L3["3. OM / DM (基础设施与拓扑模型)<br/>[物理视角 - 硬件拓扑 / 网络分区 / 部署节点 / 容灾备份 / 中间件配置]"]
+
+    L1 ==>|"展开细化逻辑"| L2
+    L2 ==>|"映射物理部署"| L3
 ```
 
-1. **System Context (C4 Level 1)**：生态位界定，黑盒化目标系统，突出外部依赖与用户角色。
-2. **Container Topology (C4 Level 2)**：物理节点、双环架构（确定性外壳 + 概率推理内核 + 沙箱）全景。
-3. **Logical Domain & State Lifecycle (DDD & FSM)**：限界上下文、聚合根划分与单向不可逆状态跃迁。
-4. **Interactive Sequence (时序图)**：跨组件请求响应闭环、带 30s 超时强杀、错误堆栈剪枝与负向账本记录的时序追踪。
-5. **Data Flow Pipeline (数据流图)**：热数据持久化、易失性工作内存缓存与日志冷备份的分级数据管道。
+### AOD 标准布局与核心元素要求：
+- **布局格式**：必须采用经典“三横两纵”布局（接入层、核心业务域、数据资产层、外部系统区、横切关注点区）。
+- **连线要求**：所有连线必须具有方向性与清晰的业务语义/协议说明，严禁光板线。
+- **图例标准**：必须配有明确自解释的图例（Legend），标注实线、虚线、颜色与框体含义。
+- **图说契约**：必须配套 1~2 页架构叙事文本（Accompanying Narrative），通过 3 分钟合格性压力测试。
+
 
 ---
 
