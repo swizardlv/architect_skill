@@ -331,6 +331,45 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("核心架构假设缺少明确的失效触发条件 (Invalidation Trigger) 与演进应对预案")
 
+        # 11. System Context / Overview 专属规范深度审计 (IBM Level 0 绝对黑盒标准)
+        is_context_file = "system-context" in file_path.name.lower() or "system-overview" in file_path.name.lower() or "c4-context" in file_path.name.lower()
+
+        if is_context_file and file_path.suffix.lower() == ".md":
+            # 检查 X-Ray 违规反模式 (严禁泄露内部微服务、内部数据库或内部子分层)
+            internal_xray_patterns = re.findall(
+                r"\b(Ingress Gateway Tier|Matching Engine Core|Sequencer Hub|GatewayCtx|MatchingCtx|ConsensusCtx|内部数据库|MySQL|PostgreSQL|Redis|Kafka|Disruptor RingBuffer)\b",
+                content,
+                re.IGNORECASE
+            )
+            if internal_xray_patterns:
+                score -= 20
+                suggestions.append(f"系统上下文触犯'X射线'违规反模式: 出现内部组件细节 {set(internal_xray_patterns)}，Level 0 必须为绝对黑盒")
+
+            # 检查中心系统是否为单一黑盒实体 (In-Scope)
+            has_single_system = bool(re.search(r"(单一黑盒|中心系统|In-Scope|The System|中心黑盒)", content, re.IGNORECASE))
+            if not has_single_system:
+                score -= 10
+                suggestions.append("系统上下文缺少明确的中心黑盒实体定义 (In-Scope 单一系统边界)")
+
+            # 检查上下文实体交互矩阵 (Context Interaction Matrix)
+            has_context_matrix = bool(re.search(r"\|.*(实体分类|外部角色|外部系统|In-Scope|Out-of-Scope).*\|", content, re.IGNORECASE))
+            if not has_context_matrix:
+                score -= 15
+                suggestions.append("系统上下文缺少结构化的'上下文实体交互矩阵' (Context Interaction Matrix)")
+
+            # 检查外部角色与外部系统依赖的区分
+            has_actors = bool(re.search(r"(外部参与者|外部角色|Actors?|干系人)", content, re.IGNORECASE))
+            has_ext_systems = bool(re.search(r"(外部系统|External Systems?|依赖系统|既有资产|Legacy)", content, re.IGNORECASE))
+            if not (has_actors and has_ext_systems):
+                score -= 10
+                suggestions.append("系统上下文未清晰区分'外部角色 (Actors)'与'外部系统依赖 (External Systems)'")
+
+            # 检查三道安检门与 Zooming In 过渡说明
+            has_gatekeeper_or_zoom = bool(re.search(r"(X-Ray|安检门|Who owns this|孤岛|Zooming In|万米高空|AOD.*过渡)", content, re.IGNORECASE))
+            if not has_gatekeeper_or_zoom:
+                score -= 10
+                suggestions.append("系统上下文缺少三道安检门检验记录或向 AOD 缩放过渡说明 (Zooming In)")
+
         score = max(0, min(100, score))
 
 

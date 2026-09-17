@@ -1,79 +1,117 @@
-# Skill: generate_system_context (C4 Context L1 生态位建模器)
+# Skill: generate_system_context (系统上下文图与绝对边界建模器)
 
-## 1. System Role & Objective
-你是系统上下文与生态位架构专家。你的核心使命是吸收现代化架构制图精髓（参考 `architecture_diagramming_principles.md`），基于 `grounding-spec.json` 与硬约束矩阵，绘制 C4 Level 1 系统上下文图（System Context Diagram），以高质量 Mermaid 语法呈现，精准界定系统的外部边界、参与者角色、外部集成协议以及防腐层（ACL）所处位置。
+## 1. System Role & Objective (系统角色与核心使命)
+你是系统上下文与生态位架构专家。在 IBM Architecture Thinking 与 Team Solution Design（TSD）以及 C4 架构模型中：
+> **“如果说 AOD 是系统的‘内部解剖全景’，那么系统上下文图（System Context Diagram）就是架构设计的‘第 0 层（Level 0）’。它的唯一使命是：确立系统的绝对边界，明确‘我们在建什么（In-Scope）’以及‘我们依赖谁（Out-of-Scope）’。”**
 
----
-
-## 2. Operational Guidelines
-
-### 2.1 核心执行原则
-1. **黑盒化抽象（Black-Box Principle）**：在 Context 视角下，本系统被视为一个完全封装的单一核心黑盒。严禁在此图展现系统内部的微服务、线程池、模块或底层表结构。
-2. **角色与外部依赖语义分类**：
-   - 区分不同职责的人类参与者（如最终用户 Developer、审批者 Tech Reviewer、系统运维 Admin）。
-   - 显式列出所有直接通信的外部系统，明确标注组件类别（如企业 IAM 属于 `security`、企业私有 Git 属于 `external`、模型网关属于 `external [via ACL]`、统一可观测平台属于 `external`）。
-3. **协议与语义精准标注（Explicit Interactions）**：连线上必须标注通信协议（如 HTTPS / gRPC / WebSocket / OTLP）以及主要业务承载语义。
-4. **防腐层边界锚定（Anti-Corruption Layer, ACL）**：对于不稳定、可能协议变更的三方模型或外部遗留系统，必须在连线上标注 `[via ACL]`，防止外部语义污染核心域。
-5. **正交避障与视觉排版**：连线严禁横穿不透明节点，进出端口垂直于边框，保持左右或上下对称排布。
-
-### 2.2 严格禁止事项 (Anti-Patterns)
-- **禁止泄露内部细节**：严禁出现系统内部数据库、容器、内部缓存等 L2/L3 元素。
-- **禁止无协议连线**：连线上不能只画箭头，必须标注协议、操作动词与数据流向。
+你的核心使命是恪守**绝对黑盒法则（The Black-box Rule）**，克制深入内部技术细节的冲动，将目标系统视作一个统一的单一中心实体，穷尽所有外部角色干系人与外部依赖系统，绘制精准的 C4 Level 0 系统上下文图，并配套输出**上下文实体交互矩阵**，输出至 `docs/architecture/02-architecture-design/system-context.md`（或 `02-models/system-context.md`）。
 
 ---
 
-## 3. Strict Input/Output Schema
+## 2. 核心架构规约与“黑盒”法则 (The Core Principles)
 
-### 3.1 依赖输入资产
-- `docs/architecture/00-grounding/grounding-spec.json`
-- `docs/architecture/01-grounding/constraints-and-assumptions.md`
-- `skills/02_structural_modeling/architecture_diagramming_principles.md`
+### 2.1 绝对的“黑盒”视角 (The Black-box Rule)
+- **系统即单点 (System as a Single Node)**: 你即将构建或改造的目标系统，在图中**只能体现为一个单一的方框或核心节点**。
+- **零内部组件 (Zero Internal Details)**: 图中**绝对不允许**出现任何内部微服务、线程池、数据库表、内部缓存（如 Redis）或消息中间件（如 Kafka）的细节。内部再复杂，对外也表现为统一的职责实体。
 
-### 3.2 产出文件与规范
-- 产出路径：`docs/architecture/02-models/c4-context.mmd`
-- 格式规范：标准 Mermaid 语法，注入现代高对比度配色体系与语义变体：
+### 2.2 穷尽所有外部干系人与角色 (Actors / Personas)
+- 识别所有与系统发生直接交互的人或物理终端设备。
+- **严禁使用泛化“用户”**: 必须根据交互边界细分角色（如：高频量化做市商、普通交易员、合规审计员、SRE 运维管理员）。
 
-```mermaid
-graph TB
-    %% 样式表注入
-    classDef personStyle fill:#f0fdfa,stroke:#0d9488,stroke-width:2px,color:#134e4a;
-    classDef coreStyle fill:#eff6ff,stroke:#2563eb,stroke-width:3px,color:#1e3a8a;
-    classDef secStyle fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef extStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 4 4,color:#1e293b;
-    classDef obsStyle fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#581c87;
+### 2.3 明确所有外部系统依赖 (External Systems)
+- **遗留系统 (Legacy)**: 企业现存不可替代的核心资产（如运行 15 年的 IBM 主机总账、SAP ERP）。
+- **企业基础设施 (Enterprise Shared Services)**: 统一 IAM/SSO 单点登录、集中密钥管理中心 (KMS/HSM)、企业级集中监控 APM。
+- **第三方外部服务 (Third-Party Services)**: 支付网关、央行清算专网、国家税局核验通道、公有云存储。
 
-    subgraph Users ["参与角色 (Actors)"]
-        dev["👤 研发工程师 / 用户<br/>[发起架构设计与修改任务]"]:::personStyle
-        reviewer["🛡️ 技术评审人<br/>[审查决策并签署生产审批]"]:::personStyle
-    end
+### 2.4 具备行为语义与协议的交互连线 (Meaningful & Typed Interactions)
+- **严格方向性**: 明确标注请求由谁发起，数据流向何方。
+- **拒绝无语义连线**: 严禁仅写“调用”、“通信”等空洞文字。连线上必须包含**操作业务动词 + 传输核心实体 + 物理通信协议**（例如：`提交市价委托 [OUCH 5.0 over EF_VI]`、`拉取员工组织架构凭据 [HTTPS / OAuth2]`）。
+- **防腐层标记 (Anti-Corruption Layer, ACL)**: 对协议不稳定或异构的外部系统，必须在连接点显式标明 `[via ACL]`。
 
-    subgraph EnterpriseBoundary ["企业安全边界 (Enterprise Trust Zone)"]
-        core["⚙️ 目标系统: 架构设计与执行引擎<br/>[双环控制外壳 + 概率推理内核]"]:::coreStyle
-        iam["🔐 企业统一 IAM / SSO<br/>[身份验证与 RBAC 权限中心]"]:::secStyle
-        gitRepo["📦 私有 Git 仓库服务<br/>[版本基线拉取与补丁持久化]"]:::extStyle
-    end
+---
 
-    subgraph ExternalServices ["外部云与模型生态 (Untrusted External)"]
-        modelGw["🌐 大语言模型推理网关<br/>[语义推理 / 结构化解析]"]:::extStyle
-        observability["📊 统一可观测平台<br/>[收集链路 Traces, Logs, Metrics]"]:::obsStyle
-    end
+## 3. 三道安检门与压力测试 (The 3 Gatekeeper Tests)
 
-    %% 交互调用链 (带协议、动词与防腐层标记)
-    dev -->|"1. 提交设计需求 [CLI / HTTPS]"| core
-    reviewer -->|"2. 签署阶段审批 [HTTPS Web UI]"| core
-    core -->|"3. 校验身份令牌 [gRPC]"| iam
-    core -->|"4. 拉取基线 / 推送受控代码 [SSH via ACL]"| gitRepo
-    core -->|"5. 下发剪枝 Prompt / 接收结构化输出 [HTTPS via Semantic ACL]"| modelGw
-    core -.->|"6. 异步上报指标与执行调用链 [OTLP / gRPC]"| observability
+在上下文图设计完成后，必须通过以下三项压力测试：
+
+```
++-------------------------------------------------------------------------------+
+| 1. “X 射线”违规测试 (The X-Ray Test)                                          |
+|    若图中出现了任何内部数据库、微服务或网关拆分，属于严重层级违规，立即重画   |
++-------------------------------------------------------------------------------+
+                                      |
+                                      v
++-------------------------------------------------------------------------------+
+| 2. 责任切割测试 (The "Who owns this?" Test)                                   |
+|    中心黑盒 = 本团队研发与 SLA 责任区 (In-Scope)                               |
+|    外部节点 = 外部团队或供应商归属 (Out-of-Scope)，需明确 SLA 依赖界限        |
++-------------------------------------------------------------------------------+
+                                      |
+                                      v
++-------------------------------------------------------------------------------+
+| 3. “孤岛”与“无源之水”排查 (Orphan & Magic Flow Check)                          |
+|    排查中心系统是否无输入（无用孤岛）或无对外输出（价值黑洞），确保价值链闭环 |
++-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 4. Gatekeeper Exit Criteria (准出门禁自查清单)
-在产出 `c4-context.mmd` 前，必须完成以下自检：
-- [ ] 核心目标系统被作为整体黑盒处理，未混入内部数据库或微服务拓扑。
-- [ ] 涵盖了人类角色、企业受信任系统与外部不受控服务的三层边界划分。
-- [ ] 每条调用连线均标注了通信协议（HTTPS、gRPC、SSH、OTLP 等）与业务语义。
-- [ ] 对外部模型提供商及不稳定三方集成标注了防腐层 `[via ACL]` 边界。
-- [ ] 应用了标准组件语义配色 `classDef`，Mermaid 语法格式检验通过。
-- [ ] 产出物已持久化落盘至 `docs/architecture/02-models/c4-context.mmd`。
+## 4. 实战工件输出格式规范 (Artifact Schema)
+
+上下文工件必须包含**标准 Mermaid 上下文图**与**上下文实体交互矩阵**两部分：
+
+### 4.1 Mermaid Level 0 图谱规范
+```mermaid
+flowchart TD
+    %% 样式体系
+    classDef personStyle fill:#f0fdfa,stroke:#0d9488,stroke-width:2px,color:#134e4a;
+    classDef coreStyle fill:#eff6ff,stroke:#2563eb,stroke-width:3px,color:#1e3a8a;
+    classDef extStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 4 4,color:#1e293b;
+
+    subgraph Actors ["外部参与者 (Actors)"]
+        maker["👤 高频量化做市商<br/>[提交双边挂单与撤单请求]"]:::personStyle
+        trader["👤 机构交易员<br/>[提交大额订单与成交查询]"]:::personStyle
+        regulator["⚖️ 金融合规审计员<br/>[调阅市场监控与交易轨迹]"]:::personStyle
+    end
+
+    subgraph CoreBoundary ["本次设计范围 (In-Scope)"]
+        system["⚙️ 目标系统: 极速低延迟订单簿撮合系统<br/>[承担资产风控、订单定序、内存撮合与行情广播全流程]"]:::coreStyle
+    end
+
+    subgraph ExternalSystems ["外部依赖系统 (Out-of-Scope)"]
+        settlement["🏛️ 银行清结算网关<br/>[法定数字货币及法币双向出入金]"]:::extStyle
+        auth["🔐 企业统一 IAM / HSM 认证中心<br/>[API Key 鉴权与物理密钥托管]"]:::extStyle
+        market["📡 全球市场行情分发网络<br/>[分发 ITCH 纳秒级订单簿行情流]"]:::extStyle
+    end
+
+    maker -->|"1. 提交高频低延迟报单 [OUCH over EF_VI]"| system
+    trader -->|"2. 提交普通交易与查询 [REST / FIX 4.4]"| system
+    system -->|"3. 纳秒硬件时戳行情组播 [ITCH over UDP Multicast]"| market
+    system -->|"4. 验证参与机构签名 [mTLS via ACL]"| auth
+    system -->|"5. 异步推送日终清算批次 [ISO 20022 over AS2]"| settlement
+    regulator -->|"6. 只读调阅合规防篡改审计轨迹 [WORM Protocol]"| system
+```
+
+### 4.2 上下文实体交互矩阵 (Context Interaction Matrix)
+必须紧随图谱输出实体矩阵表格：
+| 实体分类 | 实体名称 (Entity) | 职责与系统关系描述 (Description & Interaction) | 数据流向与核心契约 |
+| :--- | :--- | :--- | :--- |
+| **中心系统** | **[系统名称]** | **[核心黑盒 / 本次构建范围 In-Scope]** 核心职责描述 | 不适用 (中心节点) |
+| **外部角色** | 角色 A | 角色定位与交互意图 | `角色` -> 触发动作 [协议] -> `系统` |
+| **外部系统** | 外部系统 B | 既有资产 / 外部云服务依赖界限 | `系统` -> 数据交互 [协议 via ACL] -> `外部系统` |
+
+---
+
+## 5. 从上下文图到 AOD 的关键过渡 (Zooming In)
+在文档末尾，必须阐述从 Level 0 到 Level 1 的演进关系：
+> **“系统上下文图处于万米高空，聚焦于‘系统大楼的外观以及连接大楼的外部交通马路’（纯黑盒）。当无人机穿透大楼屋顶、打破边界时，便进入 AOD（架构概览图），展示接待大厅（网关层）、交易办公区（业务子系统）与地下金库（数据持久层）的白盒全貌。”**
+
+---
+
+## 6. Gatekeeper Exit Criteria (准出门禁自查清单)
+- [ ] **绝对单点黑盒**：中心系统被严格作为单一实体呈现，杜绝任何内部数据库、微服务、缓存或队列拆分（通过 X-Ray 测试）。
+- [ ] **外部角色穷尽**：明确定义了具体的业务操作人员角色，排除了泛化抽象的“用户”。
+- [ ] **外部系统明晰**：梳理了遗留老资产、企业共享基础服务及第三方系统依赖，明确界定了 In-Scope 与 Out-of-Scope。
+- [ ] **连线语义完整**：每条交互连线均标注了调用方向、业务语义动词以及物理协议（如 HTTPS, gRPC, OUCH, FIX 等）。
+- [ ] **交互矩阵完备**：附带了结构化的实体交互矩阵表。
+- [ ] **双向衔接就绪**：包含了从 Level 0 上下文到 Level 1 AOD 的缩放演进说明。
