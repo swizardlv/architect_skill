@@ -123,3 +123,18 @@ python run.py --render-board
 # 生成产物路径：docs/architecture/architecture_board.html
 # 支持浏览器直接打开、双主题切换、平移缩放 (Pan & Zoom) 与高清 SVG 导出
 ```
+
+---
+
+## 致谢与致敬开源 (Acknowledgments & Open Source Inspiration)
+
+本项目在架构设计方法论、可视化体系与工程落地实践中，深受以下开源项目、架构流派与前沿思想的启发与滋养，特此致以诚挚感谢：
+
+- **[C4 Model](https://c4model.com/) & [Archify](https://github.com/)** (Simon Brown 等): 启发了层次化架构抽象模型（Context, Container, Component, Code）与现代化交互式架构画板的设计哲学。
+- **[Mermaid.js](https://mermaid.js.org/)**: 提供了强大的“架构即代码 (Diagrams as Code)”绘制引擎，使架构图谱具备版本受控与文本可审查性。
+- **[MADR (Markdown Architectural Decision Records)](https://adr.github.io/madr/)**: 启发了轻量化、结构化、可纳入代码评审的架构决策记录标准。
+- **[LMAX Disruptor](https://lmax-exchange.github.io/disruptor/)**: 启发了确定性定序先行、无锁环形缓冲区与单线程纯内存状态机的高性能设计范式。
+- **[Team Topologies](https://teamtopologies.com/)** (Matthew Skelton, Manuel Pais): 启发了 Layer 4 中基于康威定律的团队阵型拓扑、交互模式与价值流对齐方法论。
+- **[OpenAPI Specification](https://www.openapis.org/) & [SBE (Simple Binary Encoding)](https://github.com/real-logic/simple-binary-encoding)**: 提供了清晰严密、跨语言、面向极速网络边界的强契约标准。
+- **[svg-pan-zoom](https://github.com/bumbu/svg-pan-zoom)**: 为交互式架构全景画板提供了平滑流畅的矢量图无级缩放与平移操控体验。
+
