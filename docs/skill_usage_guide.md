@@ -65,16 +65,25 @@ flowchart TD
 
 ### 阶段 3：结构建模与概念抽象 (MODELING)
 
-#### 涉及 Skill：
-1. `generate_system_context.md` -> 产出 `docs/architecture/02-models/c4-context.mmd`
-2. `derive_logical_domain_model.md` -> 产出 `docs/architecture/02-models/domain-logical-model.md`
-3. `synthesize_architecture_overview.md` -> 产出 `docs/architecture/02-models/c4-container-overview.mmd`
+#### 涉及核心规范与 Skill：
+1. `architecture_diagramming_principles.md` (吸收 Archify 视觉设计精髓的画图标准)
+2. `generate_system_context.md` -> 产出 `docs/architecture/02-models/c4-context.mmd`
+3. `derive_logical_domain_model.md` -> 产出 `docs/architecture/02-models/domain-logical-model.md`
+4. `synthesize_architecture_overview.md` -> 产出 `docs/architecture/02-models/c4-container-overview.mmd`
+5. `generate_sequence_and_dataflow.md` -> 产出 `02-models/interaction-sequence.mmd` 与 `02-models/data-flow.mmd`
 
 - **实操步骤**：
-  1. **C4 Level 1 上下文图**：Agent 基于前置约束，将目标系统黑盒化，绘制 Mermaid C4Context 图，标明外部依赖（IAM、Git 等）与防腐层 `[via ACL]`。
-  2. **DDD 领域模型与状态机**：Agent 提炼统一语言，划分限界上下文、聚合根，并生成生命周期状态机 `stateDiagram-v2`。
-  3. **C4 Level 2 容器图**：Agent 绘制双环模型，展现确定性控制外壳（API 网关、FSM 调度）与概率推理内核（Agent 执行器、上下文中间件、Redis 缓存）的物理交互。
-  4. 执行 `python run.py --step`，状态机校验三份模型资产，自动跃迁至 `CONTRACTS` 阶段。
+  1. **遵循语义与几何规范**：参考 `architecture_diagramming_principles.md`，使用 7 大组件语义分类（frontend/backend/database/security/external 等）与正交避障规则，连线严格标注协议与操作动词。
+  2. **C4 Level 1 上下文图**：Agent 将目标系统黑盒化，绘制 Mermaid C4Context 图，标注外部依赖与防腐层 `[via ACL]`。
+  3. **DDD 领域模型与状态机**：Agent 提炼统一语言，划分限界上下文、聚合根，并生成带成功、自愈与熔断三条分支的生命周期状态机。
+  4. **C4 Level 2 双环容器图**：Agent 绘制双环模型，展现确定性控制外壳与概率推理内核的物理拓扑。
+  5. **微观时序与数据流动**：Agent 生成包含 30s 超时强杀、错误堆栈剪枝与负向账本记录的时序图，以及冷热数据分层管道图。
+  6. **一键生成交互式全景画板**：
+     ```bash
+     python run.py --render-board
+     ```
+     一键编译输出 `docs/architecture/architecture_board.html`，支持在浏览器中进行浅色/深色主题切换、平移缩放 (Pan & Zoom) 与高清 SVG 导出。
+  7. 执行 `python run.py --step`，状态机校验模型资产，自动跃迁至 `CONTRACTS` 阶段。
 
 ---
 

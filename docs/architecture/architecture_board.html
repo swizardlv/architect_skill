@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture Lifecycle Canvas - 架构全景交互画板</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-board: #0b0f19;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --border: #334155;
+      --card-bg: #1e293b;
+    }
+    [data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --bg-board: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --border: #cbd5e1;
+      --card-bg: #ffffff;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    header {
+      height: 56px;
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background-color: #10b981;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    button, .btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    button:hover, .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn-primary {
+      background-color: var(--accent);
+      color: #ffffff !important;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+    nav.tabs {
+      height: 44px;
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 6px 14px;
+      font-size: 13px;
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab:hover {
+      color: var(--text-primary);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    .tab.active {
+      color: var(--accent);
+      background-color: var(--bg-primary);
+      border-color: var(--border);
+      font-weight: 600;
+    }
+    main {
+      flex: 1;
+      position: relative;
+      background-color: var(--bg-board);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #viewer-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+    }
+    #viewer-container:active {
+      cursor: grabbing;
+    }
+    .mermaid-render {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .zoom-toolbar {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+    }
+    .zoom-toolbar button {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      justify-content: center;
+      border: none;
+      background: transparent;
+    }
+    .empty-state {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span>📐 Architecture Lifecycle Canvas</span>
+      <span class="badge">ACTIVE</span>
+      <span style="font-size: 12px; color: var(--text-secondary); font-weight: normal;">Archify-Style Interactive Board</span>
+    </div>
+    <div class="controls">
+      <button id="theme-toggle" title="切换浅色/深色主题">🌓 主题</button>
+      <button id="export-svg" class="btn" title="导出当前视图为高清矢量 SVG">📥 导出 SVG</button>
+      <button id="reset-view" class="btn btn-primary" title="重置视角到居中">🎯 重置视角</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tab-nav"></nav>
+
+  <main>
+    <div id="viewer-container">
+      <div id="graph-target" class="mermaid-render"></div>
+    </div>
+    <div class="zoom-toolbar">
+      <button id="zoom-in" title="放大">+</button>
+      <button id="zoom-out" title="缩小">−</button>
+      <button id="zoom-reset" title="适应画布">⟲</button>
+    </div>
+  </main>
+
+  <script>
+    const diagrams = [{"title": "🌐 C4 Context (L1 上下文生态)", "code": "graph TB\n    classDef personStyle fill:#f0fdfa,stroke:#0d9488,stroke-width:2px,color:#134e4a;\n    classDef coreStyle fill:#eff6ff,stroke:#2563eb,stroke-width:3px,color:#1e3a8a;\n    classDef secStyle fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#78350f;\n    classDef extStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 4 4,color:#1e293b;\n    classDef obsStyle fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#581c87;\n\n    subgraph Users [\"参与角色 (Actors)\"]\n        dev[\"👤 研发工程师 / 用户<br/>[发起架构设计与修改任务]\"]:::personStyle\n        reviewer[\"🛡️ 技术评审人<br/>[审查决策并签署生产审批]\"]:::personStyle\n    end\n\n    subgraph EnterpriseBoundary [\"企业安全边界 (Enterprise Trust Zone)\"]\n        core[\"⚙️ 目标系统: 架构设计与执行引擎<br/>[双环控制外壳 + 概率推理内核]\"]:::coreStyle\n        iam[\"🔐 企业统一 IAM / SSO<br/>[身份验证与 RBAC 权限中心]\"]:::secStyle\n        gitRepo[\"📦 私有 Git 仓库服务<br/>[版本基线拉取与补丁持久化]\"]:::extStyle\n    end\n\n    subgraph ExternalServices [\"外部云与模型生态 (Untrusted External)\"]\n        modelGw[\"🌐 大语言模型推理网关<br/>[语义推理 / 结构化解析]\"]:::extStyle\n        observability[\"📊 统一可观测平台<br/>[收集链路 Traces, Logs, Metrics]\"]:::obsStyle\n    end\n\n    dev -->|\"1. 提交设计需求 [CLI / HTTPS]\"| core\n    reviewer -->|\"2. 签署阶段审批 [HTTPS Web UI]\"| core\n    core -->|\"3. 校验身份令牌 [gRPC]\"| iam\n    core -->|\"4. 拉取基线 / 推送受控代码 [SSH via ACL]\"| gitRepo\n    core -->|\"5. 下发剪枝 Prompt / 接收输出 [HTTPS via Semantic ACL]\"| modelGw\n    core -.->|\"6. 异步上报指标链路 [OTLP / gRPC]\"| observability", "file": "c4-context.mmd"}, {"title": "⚙️ C4 Container (L2 双环全景拓扑)", "code": "graph TB\n    classDef feStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;\n    classDef shellStyle fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a;\n    classDef coreEngineStyle fill:#eff6ff,stroke:#1d4ed8,stroke-width:3px,color:#1e3a8a;\n    classDef dbStyle fill:#f0fdf4,stroke:#15803d,stroke-width:2px,color:#14532d;\n    classDef cacheStyle fill:#fff1f2,stroke:#e11d48,stroke-width:2px,color:#881337;\n    classDef sandboxStyle fill:#faf5ff,stroke:#7e22ce,stroke-width:2px,color:#581c87;\n\n    subgraph ClientLayer [\"接入与呈现层 (Access Layer)\"]\n        cli[\"🖥️ 主控 CLI / API Gateway<br/>[参数解析 / 鉴权拦截 / 格式反序列化]\"]:::feStyle\n    end\n\n    subgraph DeterministicShell [\"确定性控制外壳 (Deterministic Shell)\"]\n        fsmEngine[\"⚙️ 状态机调度引擎 (FSM Engine)<br/>[单向基线演进 / 门禁自检 / 挂起审批]\"]:::shellStyle\n        stateDb[(\"🗄️ 持久化状态库 (SQLite / PostgreSQL)<br/>[状态记录 / 阶段元数据 / 审计日志 (ACID)]\")]:::dbStyle\n    end\n\n    subgraph StochasticCore [\"概率推理内核 (Stochastic Core)\"]\n        agentRunner[\"🧠 认知智能体执行器 (Agent Core)<br/>[语义推理 / 补丁推演 / 负向反思]\"]:::coreEngineStyle\n        contextProxy[\"🧩 上下文剪枝中间件<br/>[AST 骨架压缩 / 错误堆栈剪枝 / 提示词组装]\"]:::coreEngineStyle\n        memoryCache[(\"⚡ 短期工作记忆与账本 (Redis / Cache)<br/>[会话上下文 / 已证伪假设账本]\")]:::cacheStyle\n    end\n\n    subgraph SandboxLayer [\"受限执行与验证沙箱 (Execution Sandbox)\"]\n        sandboxEnv[\"🛡️ 受控运行沙箱 (Docker / Subprocess)<br/>[只读契约锁定 / 补丁应用 / 30s超时测试强杀]\"]:::sandboxStyle\n    end\n\n    cli -->|\"1. 提交设计任务 / 审批指令 [CLI / HTTP]\"| fsmEngine\n    fsmEngine -->|\"2. 写入状态跃迁与审计日志 [SQL]\"| stateDb\n    fsmEngine -->|\"3. 下发当前阶段认知任务包 [Internal Call]\"| agentRunner\n    agentRunner <-->|\"4. 获取剪枝视图与提取符号 [Local Protocol]\"| contextProxy\n    contextProxy <-->|\"5. 读写短期上下文与负向账本 [RESP / Key-Value]\"| memoryCache\n    agentRunner -->|\"6. 应用精准行级补丁 [Sandbox IPC via Port]\"| sandboxEnv\n    sandboxEnv -->|\"7. 返回带超时拦截的测试断言 [JSON Output]\"| agentRunner\n    agentRunner -->|\"8. 交付阶段生成资产 [Artifacts Commit]\"| fsmEngine", "file": "c4-container-overview.mmd"}, {"title": "🔄 Lifecycle FSM (L3 状态与领域模型)", "code": "stateDiagram-v2\n    classDef happyPath fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;\n    classDef retryPath fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#78350f;\n    classDef termPath fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d;\n\n    [*] --> INIT\n    INIT --> GRILLING: START\n    GRILLING --> GROUNDED: 退出门禁满足并经人工确认\n    GROUNDED --> MODELING: 结构建模\n    MODELING --> CONTRACTED: 契约签署\n    CONTRACTED --> SCAFFOLDED: 骨架就绪\n    SCAFFOLDED --> FINALIZED: 架构锁定交付\n    \n    MODELING --> FAILED_RETRYABLE: 校验未通过\n    FAILED_RETRYABLE --> MODELING: 负向假设自愈 [重试 < 3]\n    FAILED_RETRYABLE --> FAILED_TERMINATED: 超过上限熔断\n    \n    FINALIZED --> [*]\n    FAILED_TERMINATED --> [*]\n\n    class INIT,GRILLING,GROUNDED,MODELING,CONTRACTED,SCAFFOLDED,FINALIZED happyPath;\n    class FAILED_RETRYABLE retryPath;\n    class FAILED_TERMINATED termPath;", "file": "domain-logical-model.md"}, {"title": "⏱️ Interaction Sequence (L4 交互与反思时序)", "code": "sequenceDiagram\n    autonumber\n    actor Dev as 开发者 (Developer)\n    participant FSM as 状态机调度引擎 (FSM)\n    participant Agent as 认知智能体 (Agent Core)\n    participant Ctx as 上下文剪枝中间件\n    participant SB as 受限运行沙箱 (Sandbox)\n    participant Ledger as 负向假设账本 (Ledger)\n\n    Dev->>FSM: 触发代码变更/修复任务\n    activate FSM\n    FSM->>Agent: 下发当前上下文与目标测试用例\n    activate Agent\n    Agent->>Ctx: 请求受限行范围与 AST 骨架\n    Ctx-->>Agent: 返回已剪枝的高信噪比上下文\n    Agent->>Agent: 推演行级精准补丁 (apply_targeted_patch)\n    Agent->>SB: 在沙箱中应用补丁并触发单元测试\n    activate SB\n    alt 测试在 30s 内顺利通过 (Happy Path)\n        SB-->>Agent: 自动化测试通过 (0 Errors)\n        Agent-->>FSM: 提交生成补丁与自检报告\n        FSM-->>Dev: 推进至下一阶段 / 提示人工验收\n    else 产生死循环或断言失败 (Failure & Self-Correction)\n        SB--XSB: 触发 30s 硬超时强杀 (SIGKILL)\n        SB-->>Agent: 返回剪枝后的错误堆栈 (Pruned Trace)\n        deactivate SB\n        Agent->>Ledger: 写入本次已证伪假设与错误特征\n        Agent->>Agent: 反思并推翻上一轮假设，重新规划方案\n    end\n    deactivate Agent\n    deactivate FSM", "file": "interaction-sequence.mmd"}, {"title": "🌊 Data Flow Pipeline (L5 数据分级管道)", "code": "flowchart TD\n    classDef inputStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;\n    classDef hotDbStyle fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;\n    classDef cacheStyle fill:#fff1f2,stroke:#e11d48,stroke-width:2px,color:#881337;\n    classDef coldStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 4 4,color:#334155;\n\n    Inflow[\"📥 外部事件 / 用户设计输入\"]:::inputStyle\n    \n    subgraph HotZone [\"热数据工作区 (Hot Zone - 毫秒级)\"]\n        RedisMem[(\"⚡ 易失性工作内存 (Redis)<br/>• 活跃会话上下文<br/>• 负向假设账本<br/>• 未提交 Diff 暂存\")]:::cacheStyle\n    end\n    \n    subgraph WarmZone [\"持久化业务区 (Warm Zone - ACID)\"]\n        StateDb[(\"🗄️ 关系型状态库 (SQLite / PostgreSQL)<br/>• FSM 状态跃迁历史<br/>• 架构元数据<br/>• 已签署契约与 ADR\")]:::hotDbStyle\n    end\n    \n    subgraph ColdZone [\"温冷归档与追踪区 (Cold Zone - 分析与合规)\"]\n        AuditStorage[(\"📦 归档存储 / 对象存储<br/>• 完整历史快照<br/>• 分布式 OTLP Trace 日志<br/>• 180 天审计留痕\")]:::coldStyle\n    end\n    \n    Inflow -->|\"写入瞬时状态\"| RedisMem\n    Inflow -->|\"阶段完成持久化\"| StateDb\n    StateDb -.->|\"异步批量打包沉降\"| AuditStorage", "file": "data-flow.mmd"}];
+    let currentIdx = 0;
+    let panZoomInstance = null;
+    let currentTheme = localStorage.getItem("archify_theme") || "dark";
+
+    document.documentElement.setAttribute("data-theme", currentTheme);
+
+    function initMermaid(theme) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: theme === "dark" ? "dark" : "default",
+        securityLevel: "loose",
+        flowchart: { useMaxWidth: false, htmlLabels: true, curve: "basis" },
+        themeVariables: theme === "dark" ? {
+          darkMode: true,
+          background: "#0b0f19",
+          primaryColor: "#1e3a8a",
+          primaryTextColor: "#f8fafc",
+          primaryBorderColor: "#3b82f6",
+          lineColor: "#64748b",
+          secondaryColor: "#1e293b",
+          tertiaryColor: "#0f172a"
+        } : {
+          darkMode: false,
+          background: "#ffffff",
+          primaryColor: "#eff6ff",
+          primaryTextColor: "#0f172a",
+          primaryBorderColor: "#2563eb",
+          lineColor: "#475569"
+        }
+      });
+    }
+
+    function renderDiagram(index) {
+      currentIdx = index;
+      const nav = document.getElementById("tab-nav");
+      Array.from(nav.children).forEach((el, i) => {
+        el.className = "tab " + (i === index ? "active" : "");
+      });
+
+      const target = document.getElementById("graph-target");
+      if (panZoomInstance) {
+        panZoomInstance.destroy();
+        panZoomInstance = null;
+      }
+      target.innerHTML = "";
+
+      if (!diagrams || diagrams.length === 0) {
+        target.innerHTML = '<div class="empty-state">当前工作区暂无可渲染的架构图表。请先运行状态机生成 02-models/ 下的图元资产。</div>';
+        return;
+      }
+
+      const item = diagrams[index];
+      const code = item.code.trim();
+      const uniqueId = "render_" + Math.random().toString(36).substr(2, 9);
+
+      mermaid.render(uniqueId, code).then(({ svg }) => {
+        target.innerHTML = svg;
+        const svgElement = target.querySelector("svg");
+        if (svgElement) {
+          svgElement.style.width = "100%";
+          svgElement.style.height = "100%";
+          panZoomInstance = svgPanZoom(svgElement, {
+            zoomEnabled: true,
+            controlIconsEnabled: false,
+            fit: true,
+            center: true,
+            minZoom: 0.2,
+            maxZoom: 10
+          });
+        }
+      }).catch(err => {
+        target.innerHTML = '<div class="empty-state" style="color:#ef4444;">图表渲染语法异常:<br><pre>' + err.message + '</pre></div>';
+      });
+    }
+
+    // 初始化导航 Tab
+    const tabNav = document.getElementById("tab-nav");
+    diagrams.forEach((d, i) => {
+      const tab = document.createElement("div");
+      tab.className = "tab " + (i === 0 ? "active" : "");
+      tab.textContent = d.title;
+      tab.onclick = () => renderDiagram(i);
+      tabNav.appendChild(tab);
+    });
+
+    // 控制按钮逻辑
+    document.getElementById("theme-toggle").onclick = () => {
+      currentTheme = currentTheme === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", currentTheme);
+      localStorage.setItem("archify_theme", currentTheme);
+      initMermaid(currentTheme);
+      renderDiagram(currentIdx);
+    };
+
+    document.getElementById("zoom-in").onclick = () => panZoomInstance && panZoomInstance.zoomIn();
+    document.getElementById("zoom-out").onclick = () => panZoomInstance && panZoomInstance.zoomOut();
+    document.getElementById("zoom-reset").onclick = () => {
+      if (panZoomInstance) {
+        panZoomInstance.reset();
+        panZoomInstance.fit();
+        panZoomInstance.center();
+      }
+    };
+    document.getElementById("reset-view").onclick = () => {
+      if (panZoomInstance) {
+        panZoomInstance.reset();
+        panZoomInstance.fit();
+        panZoomInstance.center();
+      }
+    };
+
+    document.getElementById("export-svg").onclick = () => {
+      const svgEl = document.querySelector("#graph-target svg");
+      if (!svgEl) return;
+      const serializer = new XMLSerializer();
+      const source = serializer.serializeToString(svgEl);
+      const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (diagrams[currentIdx]?.title || "architecture-diagram") + ".svg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    // 启动首次渲染
+    initMermaid(currentTheme);
+    renderDiagram(0);
+  </script>
+</body>
+</html>

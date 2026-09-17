@@ -52,9 +52,11 @@
     "MODELING": {
       "description": "结构建模与概念抽象阶段：输出 C4 Context (L1)、领域模型与 C4 Container (L2)",
       "skills": [
+        "skills/02_structural_modeling/architecture_diagramming_principles.md",
         "skills/02_structural_modeling/generate_system_context.md",
         "skills/02_structural_modeling/derive_logical_domain_model.md",
-        "skills/02_structural_modeling/synthesize_architecture_overview.md"
+        "skills/02_structural_modeling/synthesize_architecture_overview.md",
+        "skills/02_structural_modeling/generate_sequence_and_dataflow.md"
       ],
       "exit_gate": {
         "required_artifacts": [

@@ -17,9 +17,11 @@ skills/
 │   ├── distill_nfr_matrix.md                   # NFR 度量矩阵提取 Prompt 与模板
 │   └── catalog_invariants_and_constraints.md   # 不变量与硬约束编目 Prompt 与模板
 ├── 02_structural_modeling/
+│   ├── architecture_diagramming_principles.md  # 架构制图准则 (吸纳 Archify 语义与排版精髓)
 │   ├── generate_system_context.md              # C4 Context (L1) 建模 Prompt 与 Mermaid 规范
-│   ├── derive_logical_domain_model.md          # DDD 限界上下文与状态机 Prompt
-│   └── synthesize_architecture_overview.md     # C4 Container (L2) 拓扑 Prompt
+│   ├── derive_logical_domain_model.md          # DDD 限界上下文与生命周期状态机 Prompt
+│   ├── synthesize_architecture_overview.md     # C4 Container (L2) 双环拓扑 Prompt
+│   └── generate_sequence_and_dataflow.md       # 交互调用时序与分级数据流建模 Prompt
 ├── 03_contracts_and_decisions/
 │   ├── record_architecture_decision.md         # ADR 决策生成 Prompt (MADR 规范)
 │   ├── scaffold_boundary_contracts.md          # OpenAPI / JSON Schema 提取与验证 Prompt
@@ -107,4 +109,13 @@ python run.py --auto-approve
 
 # 重置生命周期状态
 python run.py --reset
+```
+
+### 3. 编译输出交互式架构全景画板 (Archify 风格)
+```bash
+# 将 02-models/ 下的架构图表编译为自包含单文件 HTML 画板
+python run.py --render-board
+
+# 生成产物路径：docs/architecture/architecture_board.html
+# 支持浏览器直接打开、双主题切换、平移缩放 (Pan & Zoom) 与高清 SVG 导出
 ```

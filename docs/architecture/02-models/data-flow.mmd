@@ -1,0 +1,23 @@
+flowchart TD
+    classDef inputStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
+    classDef hotDbStyle fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef cacheStyle fill:#fff1f2,stroke:#e11d48,stroke-width:2px,color:#881337;
+    classDef coldStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 4 4,color:#334155;
+
+    Inflow["📥 外部事件 / 用户设计输入"]:::inputStyle
+    
+    subgraph HotZone ["热数据工作区 (Hot Zone - 毫秒级)"]
+        RedisMem[("⚡ 易失性工作内存 (Redis)<br/>• 活跃会话上下文<br/>• 负向假设账本<br/>• 未提交 Diff 暂存")]:::cacheStyle
+    end
+    
+    subgraph WarmZone ["持久化业务区 (Warm Zone - ACID)"]
+        StateDb[("🗄️ 关系型状态库 (SQLite / PostgreSQL)<br/>• FSM 状态跃迁历史<br/>• 架构元数据<br/>• 已签署契约与 ADR")]:::hotDbStyle
+    end
+    
+    subgraph ColdZone ["温冷归档与追踪区 (Cold Zone - 分析与合规)"]
+        AuditStorage[("📦 归档存储 / 对象存储<br/>• 完整历史快照<br/>• 分布式 OTLP Trace 日志<br/>• 180 天审计留痕")]:::coldStyle
+    end
+    
+    Inflow -->|"写入瞬时状态"| RedisMem
+    Inflow -->|"阶段完成持久化"| StateDb
+    StateDb -.->|"异步批量打包沉降"| AuditStorage
