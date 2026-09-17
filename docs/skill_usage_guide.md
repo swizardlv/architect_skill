@@ -137,3 +137,38 @@ flowchart TD
 2. **AI 只在限定槽位填空**：
    - 下游工程师只需在 Cursor / Windsurf 中向 AI 下达指令：“*请在 `src/adapters/` 中实现存储接口，并填充标记为 `# TODO: [VibeCoding Slot]` 的计算函数*”。
    - AI 的输出被牢牢限制在预留的槽位与沙箱中，整体工程结构和业务逻辑绝不跑偏。
+
+---
+
+## 四、多案例独立目录管理规范与推演
+
+在实际研发与架构评审中，团队常有多个微服务或跨系统案例需要独立推演。为杜绝资产混乱，所有案例在测试区统一按独立目录组织：
+
+```text
+arhitect_skill_tests/
+├── README.md                      # 案例集索引总览 (包含各案例直达链接)
+├── cbs_engine/                    # 案例 1: 跨境清算与反洗钱推理系统
+│   ├── README.md                  # 该案例专属工程说明
+│   ├── .agent-rules.md            # 该案例专属防跑偏规则
+│   ├── docs/architecture/         # 该案例全生命周期架构资产
+│   │   ├── 00-grounding/
+│   │   ├── 01-grounding/
+│   │   ├── 02-models/
+│   │   ├── 03-decisions/
+│   │   ├── 04-contracts/
+│   │   ├── 04-execution/
+│   │   └── architecture_board.html# 该案例专属交互画板
+│   └── src/                       # 该案例专属物理工程代码骨架
+└── <next_case>/                   # 案例 2: 其他独立业务系统
+```
+
+### 运行指定案例：
+```bash
+python scripts/run_case_study.py <case_name>
+```
+例如：
+```bash
+python scripts/run_case_study.py cbs_engine
+```
+驱动脚本将自动创建隔离目录、推进状态机生命周期、生成交互画板与工程骨架，并同步更新根目录下的 `README.md` 索引。
+

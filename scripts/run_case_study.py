@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -647,7 +648,19 @@ class PostgresClearingAdapter(SettlementRepositoryPort):
     (ws_root / "04-execution" / "walking-skeleton-spec.json").write_text(
         json.dumps(skeleton_spec, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(" -> 产出资产: 物理工程骨架、.agent-rules.md 与 roadmap-and-first-step.md 就绪")
+
+    case_readme = """# CBS-Engine: 跨境金融清算与反洗钱推理系统
+
+本项目是由 `architect_skill` 状态机驱动引擎自动生成的独立架构案例工程。
+
+## 目录结构
+- `docs/architecture/`：全生命周期架构资产（需求锚定、NFR矩阵、C4与状态机图谱、ADR、OpenAPI契约、交付演进）
+- `docs/architecture/architecture_board.html`：自包含可交互架构画板（支持拖拽缩放、深浅色切换、SVG导出）
+- `.agent-rules.md`：AI 编码防跑偏围栏与坏味道阻断守则
+- `src/`：基于六边形架构生成的物理工程骨架
+"""
+    (target_root / "README.md").write_text(case_readme, encoding="utf-8")
+    print(" -> 产出资产: 物理工程骨架、.agent-rules.md、README.md 与 roadmap-and-first-step.md 就绪")
 
     # 7. SCAFFOLDING -> FINALIZED
     fsm.advance()
@@ -660,6 +673,67 @@ class PostgresClearingAdapter(SettlementRepositoryPort):
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
+def update_cases_index_readme(base_dir: Path) -> None:
+    """在测试总目录生成/更新所有案例的索引文档."""
+    case_entries = []
+    for item in sorted(base_dir.iterdir()):
+        if item.is_dir() and (item / "docs" / "architecture").exists():
+            readme_path = item / "README.md"
+            title = item.name
+            if readme_path.exists():
+                first_line = readme_path.read_text(encoding="utf-8").splitlines()[0]
+                title = first_line.lstrip("#").strip() or item.name
+            case_entries.append(f"- [{title}](./{item.name}/) - 路径: `{item.name}/`")
+
+    index_content = f"""# 架构设计技能测试案例集 (Architecture Skill Test Cases)
+
+本目录为 `architect_skill` 架构方法论与状态机驱动引擎的测试验证工作区。
+每个案例均存放在独立的子目录中，拥有各自独立的全生命周期架构资产、交互画板与工程代码骨架。
+
+## 已推演案例列表
+
+{chr(10).join(case_entries) if case_entries else "*(暂无案例)*"}
+
+## 运行与扩展新案例
+
+运行指定案例：
+```bash
+python scripts/run_case_study.py <case_name>
+```
+例如：
+```bash
+python scripts/run_case_study.py cbs_engine
+```
+"""
+    (base_dir / "README.md").write_text(index_content, encoding="utf-8")
+    print(f" -> 已更新案例集索引总览: {base_dir / 'README.md'}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="架构设计技能多案例推演驱动器")
+    parser.add_argument("case", nargs="?", default="cbs_engine", help="要执行推演的案例名称 (默认: cbs_engine)")
+    parser.add_argument(
+        "--base-dir",
+        default=os.path.expanduser("~/code/arhitect_skill_tests"),
+        help="测试基准目录 (默认: ~/code/arhitect_skill_tests)"
+    )
+    args = parser.parse_args()
+
+    base_dir = Path(args.base_dir).resolve()
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    case_dir = base_dir / args.case
+    case_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.case == "cbs_engine":
+        run_cbs_case_study(case_dir)
+    else:
+        print(f"⚠️ 未知案例名称: {args.case}，目前内置案例仅支持: cbs_engine")
+        sys.exit(1)
+
+    update_cases_index_readme(base_dir)
+
+
 if __name__ == "__main__":
-    target = Path(os.path.expanduser("~/code/arhitect_skill_tests")).resolve()
-    run_cbs_case_study(target)
+    main()
+
