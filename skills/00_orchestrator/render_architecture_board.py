@@ -469,3 +469,12 @@ def render_board(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html_content, encoding="utf-8")
     return out
+
+
+if __name__ == "__main__":
+    import sys
+    target_ws = sys.argv[1] if len(sys.argv) > 1 else "."
+    proj_name = sys.argv[2] if len(sys.argv) > 2 else Path(target_ws).resolve().parent.parent.name
+    generated_path = render_board(target_ws, project_name=proj_name)
+    print(f"Architecture board generated at: {generated_path}")
+
