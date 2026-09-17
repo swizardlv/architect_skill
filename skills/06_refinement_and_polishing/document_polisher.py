@@ -370,6 +370,42 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("系统上下文缺少三道安检门检验记录或向 AOD 缩放过渡说明 (Zooming In)")
 
+        # 12. Architectural Style Selection 专属规范深度审计 (IBM 骨骼结构与宏观模式选型标准)
+        is_style_file = "architectural-style" in file_path.name.lower() or "style-selection" in file_path.name.lower()
+
+        if is_style_file and file_path.suffix.lower() == ".md":
+            # 检查是否区分宏观主导风格与局部微模式
+            has_macro_style = bool(re.search(r"(宏观主导|Primary Style|Macro Style|主导架构风格)", content, re.IGNORECASE))
+            has_local_patterns = bool(re.search(r"(局部架构模式|Local Patterns?|微模式|局部模式)", content, re.IGNORECASE))
+            if not (has_macro_style and has_local_patterns):
+                score -= 15
+                suggestions.append("架构风格选型未清晰界定'宏观主导架构风格 (Macro Style)'与子域的'局部微模式 (Local Patterns)'")
+
+            # 检查是否强绑定 ARC 质量属性指标
+            has_arc_mapping = bool(re.search(r"(ARC-|质量属性驱动|NFR-)", content))
+            if not has_arc_mapping:
+                score -= 15
+                suggestions.append("架构风格选型缺少与 ARC 质量指标 (如 ARC-PERF, ARC-AVAIL) 的显式驱动映射")
+
+            # 检查候选架构风格横向权衡对比矩阵
+            has_tradeoff_matrix = bool(re.search(r"\|.*(候选|备选|评估维度|风格|Trade-off).*\|", content, re.IGNORECASE)) and \
+                                  bool(re.search(r"(否决|Rejected|被否决)", content, re.IGNORECASE))
+            if not has_tradeoff_matrix:
+                score -= 15
+                suggestions.append("架构风格选型缺少候选风格横向权衡对比矩阵 (Trade-off Matrix) 或被否决根因分析")
+
+            # 检查五维评判漏斗自检
+            has_funnel = bool(re.search(r"(五维|漏斗|团队能力|逆转成本|TCO|Feasibility|Reversibility)", content, re.IGNORECASE))
+            if not has_funnel:
+                score -= 10
+                suggestions.append("架构风格选型缺少'五维评判漏斗' (团队可行性、NFR拟合、逆转成本、TCO预算、ADR闭环) 自检表")
+
+            # 检查是否明确关联顶层 ADR 闭环
+            has_adr_ref = bool(re.search(r"(ADR-|AD-|架构决策记录)", content))
+            if not has_adr_ref:
+                score -= 10
+                suggestions.append("架构风格选型未明确关联顶层架构决策记录 (ADR-001 等)")
+
         score = max(0, min(100, score))
 
 
