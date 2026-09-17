@@ -83,24 +83,28 @@ def test_gatekeeper_blocks_invalid_json(temp_workspace: Path) -> None:
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
     (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
 
     fsm.advance(hitl_approved=True)  # 进入 GROUNDING
     (req_dir / "non-functional-requirements.md").write_text("# NFR", encoding="utf-8")
+    (req_dir / "architecture-requirements-checklist.md").write_text("# ARC\n| ARC-01 | 质量属性类别 | 量化设计指标 |", encoding="utf-8")
     (req_dir / "constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
 
     fsm.advance()  # 进入 MODELING
     arch_dir = temp_workspace / "02-architecture-design"
     arch_dir.mkdir(parents=True, exist_ok=True)
     (arch_dir / "system-overview.md").write_text("# Overview", encoding="utf-8")
+    (arch_dir / "architecture-overview-diagram.md").write_text("# AOD", encoding="utf-8")
+    (arch_dir / "component-model.md").write_text("# CM", encoding="utf-8")
     (arch_dir / "domain-logical-model.md").write_text("# Domain", encoding="utf-8")
-    (arch_dir / "c4-context.mmd").write_text("C4Context\ntitle Context", encoding="utf-8")
-    (arch_dir / "c4-container-overview.mmd").write_text("C4Container\ntitle Overview", encoding="utf-8")
+    (arch_dir / "c4-context.mmd").write_text("graph TD\nA --> B", encoding="utf-8")
+    (arch_dir / "c4-container-overview.mmd").write_text("graph TD\nC --> D", encoding="utf-8")
 
     fsm.advance()  # 进入 CONTRACTS
     eng_dir = temp_workspace / "03-engineering-and-physics"
     (eng_dir / "adrs").mkdir(parents=True, exist_ok=True)
     (eng_dir / "contracts").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "operational-model.md").write_text("# OM", encoding="utf-8")
     (eng_dir / "deployment-architecture.md").write_text("# Deploy", encoding="utf-8")
     (eng_dir / "data-architecture.md").write_text("# Data", encoding="utf-8")
     (eng_dir / "observability-design.md").write_text("# Obs", encoding="utf-8")
@@ -136,7 +140,7 @@ def test_hitl_rejection_in_grilling(temp_workspace: Path) -> None:
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
     (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
 
     # 人工审核被拒绝 (hitl_approved=False)
     with pytest.raises(ReviewRejectedError) as exc_info:
@@ -157,7 +161,7 @@ def test_state_persistence_and_resume(temp_workspace: Path) -> None:
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
     (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
 
     fsm1.advance(hitl_approved=True)
     assert fsm1.current_state == FSMState.GROUNDING
@@ -180,14 +184,15 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
     (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 指令接入校验", encoding="utf-8")
 
     # 2. GRILLING -> GROUNDING (HITL 批准)
     state, _ = fsm.advance(hitl_approved=True)
     assert state == FSMState.GROUNDING
 
     # 准备 GROUNDING 资产
-    (req_dir / "non-functional-requirements.md").write_text("# NFR Matrix", encoding="utf-8")
+    (req_dir / "non-functional-requirements.md").write_text("# NFR Matrix\nSLA 99.999% P99 < 30ms", encoding="utf-8")
+    (req_dir / "architecture-requirements-checklist.md").write_text("# ARC\n| ARC-01 | 质量属性类别 | 量化设计指标 |", encoding="utf-8")
     (req_dir / "constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
 
     # 3. GROUNDING -> MODELING
@@ -198,9 +203,11 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     arch_dir = temp_workspace / "02-architecture-design"
     arch_dir.mkdir(parents=True, exist_ok=True)
     (arch_dir / "system-overview.md").write_text("# System Overview", encoding="utf-8")
+    (arch_dir / "architecture-overview-diagram.md").write_text("# AOD Overview", encoding="utf-8")
+    (arch_dir / "component-model.md").write_text("# Component Model", encoding="utf-8")
     (arch_dir / "domain-logical-model.md").write_text("# Domain Model", encoding="utf-8")
-    (arch_dir / "c4-context.mmd").write_text("C4Context\ntitle Context", encoding="utf-8")
-    (arch_dir / "c4-container-overview.mmd").write_text("C4Container\ntitle Overview", encoding="utf-8")
+    (arch_dir / "c4-context.mmd").write_text("graph TD\nA --> B", encoding="utf-8")
+    (arch_dir / "c4-container-overview.mmd").write_text("graph TD\nC --> D", encoding="utf-8")
 
     # 4. MODELING -> CONTRACTS
     state, _ = fsm.advance()
@@ -210,6 +217,7 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     eng_dir = temp_workspace / "03-engineering-and-physics"
     (eng_dir / "adrs").mkdir(parents=True, exist_ok=True)
     (eng_dir / "contracts").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "operational-model.md").write_text("# Operational Model", encoding="utf-8")
     (eng_dir / "deployment-architecture.md").write_text("# Deployment Architecture", encoding="utf-8")
     (eng_dir / "data-architecture.md").write_text("# Data Architecture", encoding="utf-8")
     (eng_dir / "observability-design.md").write_text("# Observability", encoding="utf-8")

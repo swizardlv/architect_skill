@@ -9,12 +9,19 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+try:
+    from render_architecture_board import validate_mermaid_syntax
+except ImportError:
+    from .render_architecture_board import validate_mermaid_syntax
+
 
 
 class FSMState(str, Enum):
@@ -242,6 +249,41 @@ class ArchitectureLifecycleFSM:
                             invalid.append({"path": rel_path, "error": "JSON 内容必须是非空对象"})
                     except Exception as err:
                         invalid.append({"path": rel_path, "error": f"JSON 解析失败: {err}"})
+
+                # 针对 Mermaid 文件 (.mmd) 进行静态语法门禁校验
+                if full_path.suffix.lower() == ".mmd":
+                    is_valid, err_msg = validate_mermaid_syntax(content)
+                    if not is_valid:
+                        invalid.append({"path": rel_path, "error": f"Mermaid 语法门禁未通过: {err_msg}"})
+
+                # 针对 Markdown 文件中的内嵌 Mermaid 代码块进行语法门禁校验
+                if full_path.suffix.lower() == ".md":
+                    mermaid_blocks = re.findall(r"```mermaid\s*\n(.*?)\n```", content, re.DOTALL)
+                    for idx, block in enumerate(mermaid_blocks, 1):
+                        is_valid, err_msg = validate_mermaid_syntax(block)
+                        if not is_valid:
+                            invalid.append({
+                                "path": rel_path,
+                                "error": f"第 {idx} 个内嵌 Mermaid 图表语法错误: {err_msg}"
+                            })
+
+                # 针对 functional-requirements.md 进行深度语义校验: 必须包含具体功能需求规约(FR清单)
+                if full_path.name.lower() == "functional-requirements.md":
+                    has_fr = bool(re.search(r"(###?\s*.*(功能需求|FR-|\d+\.\s*功能需求))", content))
+                    if not has_fr:
+                        invalid.append({
+                            "path": rel_path,
+                            "error": "功能需求规约缺失: 仅包含用例(Use Cases)或角色画像(Persona)，未列出明确的系统功能需求(FR清单)"
+                        })
+
+                # 针对 architecture-requirements-checklist.md 进行深度语义校验: 必须包含 ARC 质量闭环追踪表
+                if full_path.name.lower() == "architecture-requirements-checklist.md":
+                    has_arc_table = bool(re.search(r"(ARC-\d+|质量属性类别|量化设计指标)", content))
+                    if not has_arc_table:
+                        invalid.append({
+                            "path": rel_path,
+                            "error": "ARC 质量保障清单缺失: 未包含量化指标追踪矩阵(ARC-xx)"
+                        })
 
             except Exception as err:
                 invalid.append({"path": rel_path, "error": f"读取异常: {err}"})

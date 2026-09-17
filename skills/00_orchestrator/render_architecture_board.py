@@ -26,7 +26,38 @@ def extract_mermaid_code(file_path: Path) -> str:
     matches = re.findall(r"```mermaid\s*\n(.*?)\n```", content, re.DOTALL)
     if matches:
         return matches[0].strip()
-    return content
+    return ""
+
+
+def validate_mermaid_syntax(code: str) -> Tuple[bool, str]:
+    """静态检查 Mermaid 代码的语法基础合法性，防止前端渲染报错.
+
+    Returns:
+        Tuple[bool, str]: (是否通过, 错误信息描述)
+    """
+    cleaned = code.strip()
+    if not cleaned:
+        return False, "Mermaid 代码为空"
+
+    # 检查合法开头
+    valid_headers = (
+        "graph", "flowchart", "sequencediagram", "classdiagram",
+        "statediagram", "statediagram-v2", "erdiagram", "gantt",
+        "pie", "gitgraph", "c4context", "c4container", "c4component", "c4deployment"
+    )
+    first_line = cleaned.splitlines()[0].strip().lower()
+    if not any(first_line.startswith(h) for h in valid_headers):
+        return False, f"未知的 Mermaid 图表声明: '{first_line}'，必须以有效图类型开头"
+
+    # 检查常见的破坏性语法: 未在引号内的裸 < 或 > 处于节点标签中导致 HTML 解析失败
+    # 例如: Ingest[数据 < 2小时] 应为 Ingest["数据 < 2小时"]
+    unquoted_tag_pattern = re.compile(r'\[([^"\]]*?[<>][^"\]]*?)\]')
+    matches = unquoted_tag_pattern.findall(cleaned)
+    if matches:
+        return False, f"节点文本包含未加双引号的 '<' 或 '>' 字符: '{matches[0]}'，必须使用双引号包裹，如 [\"文本 < 标签\"]"
+
+    return True, ""
+
 
 
 def build_interactive_html(
@@ -436,11 +467,24 @@ def render_board(
         models_dir = ws / "02-models"
     models_dir.mkdir(parents=True, exist_ok=True)
 
+    # 支持优先专用图元文件，其次回退到相关规范文件
+    fsm_file = models_dir / "lifecycle-fsm.mmd"
+    if not fsm_file.exists():
+        fsm_file = models_dir / "domain-logical-model.md"
+
+    context_file = models_dir / "c4-context.mmd"
+    if not context_file.exists():
+        context_file = models_dir / "aod.mmd"
+
+    container_file = models_dir / "c4-container-overview.mmd"
+    if not container_file.exists():
+        container_file = models_dir / "component-model.mmd"
+
     diagram_sources: List[Tuple[str, Path]] = [
-        ("🌐 C4 Context (L1 上下文生态)", models_dir / "c4-context.mmd"),
-        ("⚙️ C4 Container (L2 双环全景拓扑)", models_dir / "c4-container-overview.mmd"),
-        ("🔄 Lifecycle FSM (L3 状态与领域模型)", models_dir / "domain-logical-model.md"),
-        ("⏱️ Interaction Sequence (L4 交互与反思时序)", models_dir / "interaction-sequence.mmd"),
+        ("🌐 AOD / C4 Context (L1 全局概览)", context_file),
+        ("⚙️ Component Model / C4 Container (L2 逻辑组件拓扑)", container_file),
+        ("🔄 Lifecycle FSM (L3 状态与不变量流转)", fsm_file),
+        ("⏱️ Interaction Sequence (L4 交互时序协议)", models_dir / "interaction-sequence.mmd"),
         ("🌊 Data Flow Pipeline (L5 数据分级管道)", models_dir / "data-flow.mmd"),
     ]
 
@@ -449,6 +493,9 @@ def render_board(
         if file_path.exists():
             code = extract_mermaid_code(file_path)
             if code:
+                is_valid, err_msg = validate_mermaid_syntax(code)
+                if not is_valid:
+                    print(f"⚠️ [Mermaid语法警告] {file_path.name} 存在语法隐患: {err_msg}", file=sys.stderr)
                 diagrams.append({"title": title, "code": code, "file": file_path.name})
 
     # 若未找到任何图，读取 sample 默认图保证展示

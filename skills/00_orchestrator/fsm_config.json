@@ -34,7 +34,7 @@
       }
     },
     "GROUNDING": {
-      "description": "Layer 1 非功能需求与硬约束矩阵：确立量化 NFRs (性能/可用性/安全) 与不可违背的硬性红线编目",
+      "description": "Layer 1 非功能需求与硬约束矩阵：确立量化 NFRs (性能/可用性/安全)、ARC 质量保障清单与不可违背的硬性红线编目",
       "skills": [
         "skills/01_grounding/distill_nfr_matrix.md",
         "skills/01_grounding/catalog_invariants_and_constraints.md"
@@ -42,6 +42,7 @@
       "exit_gate": {
         "required_artifacts": [
           "01-requirements/non-functional-requirements.md",
+          "01-requirements/architecture-requirements-checklist.md",
           "01-requirements/constraints-and-assumptions.md"
         ],
         "hitl_required": false
@@ -51,7 +52,7 @@
       }
     },
     "MODELING": {
-      "description": "Layer 2 概念与逻辑架构设计：输出系统全景概览 (System Overview)、领域模型、C4 Context (L1) 与 C4 Container (L2) 拓扑",
+      "description": "Layer 2 概念与逻辑架构设计：输出 AOD 全景概览图、Component Model (CM) 逻辑组件模型、领域模型、C4 Context 与 C4 Container 拓扑",
       "skills": [
         "skills/02_structural_modeling/architecture_diagramming_principles.md",
         "skills/02_structural_modeling/generate_system_context.md",
@@ -62,6 +63,8 @@
       "exit_gate": {
         "required_artifacts": [
           "02-architecture-design/system-overview.md",
+          "02-architecture-design/architecture-overview-diagram.md",
+          "02-architecture-design/component-model.md",
           "02-architecture-design/domain-logical-model.md",
           "02-architecture-design/c4-context.mmd",
           "02-architecture-design/c4-container-overview.mmd"
@@ -73,7 +76,7 @@
       }
     },
     "CONTRACTS": {
-      "description": "Layer 3 物理与工程权衡及边界强契约：输出物理部署架构、数据架构、可观测性设计、FMEA 容灾矩阵、ADR 决策与 OpenAPI 接口规约",
+      "description": "Layer 3 物理与工程权衡及边界强契约：输出 Operational Model (OM) 运行部署模型、数据架构、可观测性设计、FMEA 容灾矩阵、ADR 决策与 OpenAPI 接口规约",
       "skills": [
         "skills/03_contracts_and_decisions/record_architecture_decision.md",
         "skills/03_contracts_and_decisions/scaffold_boundary_contracts.md",
@@ -81,6 +84,7 @@
       ],
       "exit_gate": {
         "required_artifacts": [
+          "03-engineering-and-physics/operational-model.md",
           "03-engineering-and-physics/deployment-architecture.md",
           "03-engineering-and-physics/data-architecture.md",
           "03-engineering-and-physics/observability-design.md",
@@ -90,7 +94,7 @@
           "03-engineering-and-physics/contracts/interface-contracts-overview.md"
         ],
         "hitl_required": true,
-        "review_prompt": "请严审 Layer 3 物理部署拓扑、数据存储方案、可观测性指标、ADR 与接口契约。签署后推进至组织与实施交付阶段。"
+        "review_prompt": "请严审 Layer 3 Operational Model 运行拓扑、数据存储方案、可观测性指标、ADR 与接口契约。签署后推进至组织与实施交付阶段。"
       },
       "transitions": {
         "APPROVE": "SCAFFOLDING",
