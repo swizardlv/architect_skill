@@ -172,14 +172,15 @@ class ArchitectureLifecycleFSM:
         return False
 
     def ensure_workspace_directories(self) -> None:
-        """确保各阶段所需物理子目录就绪."""
+        """确保各阶段所需标准物理子目录就绪，杜绝废弃旧目录生成."""
         subdirs = [
-            "00-grounding",
-            "01-grounding",
-            "02-models",
-            "03-decisions",
-            "04-contracts",
-            "04-execution",
+            "00-state",
+            "01-requirements",
+            "02-architecture-design",
+            "03-engineering-and-physics",
+            "03-engineering-and-physics/adrs",
+            "03-engineering-and-physics/contracts",
+            "04-delivery-and-organization",
         ]
         self.workspace_root.mkdir(parents=True, exist_ok=True)
         for sub in subdirs:
@@ -290,7 +291,9 @@ class ArchitectureLifecycleFSM:
 
         # 针对 SCAFFOLDING 状态进行深度语义门禁校验
         if state == FSMState.SCAFFOLDING and len(missing) == 0 and len(invalid) == 0:
-            spec_path = self.resolve_artifact_path("04-execution/walking-skeleton-spec.json")
+            spec_path = self.resolve_artifact_path("04-delivery-and-organization/walking-skeleton-spec.json")
+            if not spec_path.exists():
+                spec_path = self.resolve_artifact_path("04-execution/walking-skeleton-spec.json")
             if spec_path.exists():
                 try:
                     spec_data = json.loads(spec_path.read_text(encoding="utf-8"))
@@ -301,7 +304,7 @@ class ArchitectureLifecycleFSM:
                         if not d_path.exists():
                             missing.append(f"骨架目录缺失: {req_dir}")
                 except Exception as err:
-                    invalid.append({"path": "04-execution/walking-skeleton-spec.json", "error": f"规范读取失败: {err}"})
+                    invalid.append({"path": "04-delivery-and-organization/walking-skeleton-spec.json", "error": f"规范读取失败: {err}"})
 
         passed = (len(missing) == 0) and (len(invalid) == 0)
         message = "门禁检查通过" if passed else "门禁存在未达成项"

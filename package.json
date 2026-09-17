@@ -4,8 +4,8 @@
   "description": "Architecture Thinking and Lifecycle Orchestration Engine for AI Coding Agents",
   "scripts": {
     "test": "pytest -v",
-    "compile": "python3 -m py_compile run.py scripts/manage_test_workspaces.py skills/00_orchestrator/orchestrate_architecture_lifecycle.py skills/00_orchestrator/render_architecture_board.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py",
-    "lint": "python3 -m py_compile run.py scripts/manage_test_workspaces.py skills/00_orchestrator/orchestrate_architecture_lifecycle.py skills/00_orchestrator/render_architecture_board.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py"
+    "compile": "python3 -m py_compile run.py scripts/manage_test_workspaces.py skills/00_orchestrator/orchestrate_architecture_lifecycle.py skills/00_orchestrator/render_architecture_board.py skills/06_refinement_and_polishing/document_polisher.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py",
+    "lint": "python3 -m py_compile run.py scripts/manage_test_workspaces.py skills/00_orchestrator/orchestrate_architecture_lifecycle.py skills/00_orchestrator/render_architecture_board.py skills/06_refinement_and_polishing/document_polisher.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py"
   },
   "author": "swizard",
   "license": "MIT"

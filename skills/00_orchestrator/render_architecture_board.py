@@ -467,36 +467,59 @@ def render_board(
         models_dir = ws / "02-models"
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    # 支持优先专用图元文件，其次回退到相关规范文件
-    fsm_file = models_dir / "lifecycle-fsm.mmd"
-    if not fsm_file.exists():
-        fsm_file = models_dir / "domain-logical-model.md"
+    eng_dir = ws / "03-engineering-and-physics"
 
-    context_file = models_dir / "c4-context.mmd"
-    if not context_file.exists():
-        context_file = models_dir / "aod.mmd"
+    def find_first_existing(paths: List[Path]) -> Optional[Path]:
+        for p in paths:
+            if p.exists():
+                return p
+        return None
 
-    container_file = models_dir / "c4-container-overview.mmd"
-    if not container_file.exists():
-        container_file = models_dir / "component-model.mmd"
-
-    diagram_sources: List[Tuple[str, Path]] = [
-        ("🌐 AOD / C4 Context (L1 全局概览)", context_file),
-        ("⚙️ Component Model / C4 Container (L2 逻辑组件拓扑)", container_file),
-        ("🔄 Lifecycle FSM (L3 状态与不变量流转)", fsm_file),
-        ("⏱️ Interaction Sequence (L4 交互时序协议)", models_dir / "interaction-sequence.mmd"),
-        ("🌊 Data Flow Pipeline (L5 数据分级管道)", models_dir / "data-flow.mmd"),
+    # Architecture Thinking 核心 7 维图谱标准
+    diagram_candidates: List[Tuple[str, List[Path]]] = [
+        ("📐 AOD (架构全景概览图 / C4 Context)", [
+            models_dir / "aod.mmd",
+            models_dir / "architecture-overview-diagram.md",
+            models_dir / "c4-context.mmd",
+        ]),
+        ("⚙️ CM (组件结构模型图 / C4 Container)", [
+            models_dir / "component-model.mmd",
+            models_dir / "component-model.md",
+            models_dir / "c4-container-overview.mmd",
+        ]),
+        ("🧩 LM (领域逻辑模型图)", [
+            models_dir / "logical-model.mmd",
+            models_dir / "domain-model.mmd",
+            models_dir / "domain-logical-model.md",
+        ]),
+        ("🏗️ DM (基础设施部署拓扑图)", [
+            eng_dir / "deployment-model.mmd",
+            eng_dir / "operational-model.md",
+            eng_dir / "deployment-architecture.md",
+        ]),
+        ("🔄 FSM (生命周期状态机)", [
+            models_dir / "lifecycle-fsm.mmd",
+            models_dir / "domain-logical-model.md",
+        ]),
+        ("⏱️ Interaction Sequence (交互时序协议)", [
+            models_dir / "interaction-sequence.mmd",
+        ]),
+        ("🌊 Data Flow Pipeline (数据流向与分级管道)", [
+            models_dir / "data-flow.mmd",
+            eng_dir / "data-architecture.md",
+        ]),
     ]
 
     diagrams: List[Dict[str, str]] = []
-    for title, file_path in diagram_sources:
-        if file_path.exists():
-            code = extract_mermaid_code(file_path)
+    for title, candidates in diagram_candidates:
+        match_file = find_first_existing(candidates)
+        if match_file:
+            code = extract_mermaid_code(match_file)
             if code:
                 is_valid, err_msg = validate_mermaid_syntax(code)
                 if not is_valid:
-                    print(f"⚠️ [Mermaid语法警告] {file_path.name} 存在语法隐患: {err_msg}", file=sys.stderr)
-                diagrams.append({"title": title, "code": code, "file": file_path.name})
+                    print(f"⚠️ [Mermaid语法警告] {match_file.name} 存在语法隐患: {err_msg}", file=sys.stderr)
+                diagrams.append({"title": title, "code": code, "file": match_file.name})
 
     # 若未找到任何图，读取 sample 默认图保证展示
     if not diagrams:

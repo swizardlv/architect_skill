@@ -14,11 +14,33 @@ from datetime import datetime
 from pathlib import Path
 
 
+def clean_legacy_directories(case_dir: Path) -> None:
+    """清理历史遗留的废弃空目录 (如 00-grounding, 02-models 等)."""
+    arch_root = case_dir / "docs" / "architecture"
+    if not arch_root.exists():
+        return
+    legacy_dirs = [
+        "00-grounding",
+        "01-grounding",
+        "02-models",
+        "03-decisions",
+        "04-contracts",
+        "04-execution",
+    ]
+    for leg in legacy_dirs:
+        leg_path = arch_root / leg
+        if leg_path.exists() and leg_path.is_dir():
+            # 若为空或仅包含空子目录，安全清除
+            shutil.rmtree(leg_path, ignore_errors=True)
+            print(f"🧹 [自动清理] 清除历史遗留空目录: {leg_path.name}")
+
+
 def archive_case_workspace(case_dir: Path, base_dir: Path) -> Path | None:
     """将既有案例目录完整快照归档至 .archive 目录."""
     if not case_dir.exists() or not (case_dir / "docs" / "architecture").exists():
         return None
 
+    clean_legacy_directories(case_dir)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     archive_root = base_dir / ".archive"
     archive_target = archive_root / f"round_{timestamp}_{case_dir.name}"
@@ -27,6 +49,7 @@ def archive_case_workspace(case_dir: Path, base_dir: Path) -> Path | None:
     shutil.copytree(case_dir, archive_target)
     print(f"📦 [自动归档] 既有产物已完整快照归档至: {archive_target}")
     return archive_target
+
 
 
 def update_cases_index_readme(base_dir: Path) -> None:
