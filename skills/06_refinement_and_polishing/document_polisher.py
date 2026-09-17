@@ -139,7 +139,42 @@ class ArchitectureDocumentPolisher:
                     score -= 10
                     suggestions.append("CM 缺少 '三道防线' (团队分配测试、变更隔离测试、OM衔接测试) 评审自检表")
 
+        # 6. OM (Operational Model) 专属规范深度审计 (IBM 标准: 逻辑/物理运行拓扑、CM映射与容灾)
+        if "operational-model" in file_path.name.lower() or "deployment-model" in file_path.name.lower():
+            # 检查是否包含逻辑与物理运行模型双层演进
+            has_dual_om = bool(re.search(r"(Logical OM|逻辑运行)", content, re.IGNORECASE)) and \
+                          bool(re.search(r"(Physical OM|物理运行|物理拓扑)", content, re.IGNORECASE))
+            if not has_dual_om and file_path.suffix.lower() == ".md":
+                score -= 15
+                suggestions.append("OM 缺少 Logical OM (逻辑运行模型) 与 Physical OM (物理运行模型) 的双层演进映射")
+
+            # 检查是否包含 CM 部署单元映射 (Deployment Allocation)
+            has_cm_mapping = bool(re.search(r"(CM 映射|承载组件|Deployment Allocation|部署映射)", content, re.IGNORECASE))
+            if not has_cm_mapping and file_path.suffix.lower() == ".md":
+                score -= 15
+                suggestions.append("OM 缺少与 CM 物理构建物的部署单元映射 (Deployment Allocation Matrix)")
+
+            # 检查是否包含节点规范卡片 (Node Specification)
+            has_node_spec = bool(re.search(r"(Node Specification|节点规范卡片|NODE-)", content, re.IGNORECASE))
+            if not has_node_spec and file_path.suffix.lower() == ".md":
+                score -= 10
+                suggestions.append("OM 缺少标准节点规范卡片集 (Node Specifications: 标明机型规格、VPC/网络区域及存储配置)")
+
+            # 检查是否落实高可用与容灾指标 (RTO / RPO)
+            has_rto_rpo = bool(re.search(r"\bRTO\b", content)) and bool(re.search(r"\bRPO\b", content))
+            if not has_rto_rpo and file_path.suffix.lower() == ".md":
+                score -= 10
+                suggestions.append("OM 缺少高可用容灾关键指标落地设计 (RTO 与 RPO)")
+
+            # 检查是否包含压力实战测试 (拔电源测试 / 容量测算)
+            if file_path.suffix.lower() == ".md":
+                has_stress_test = bool(re.search(r"(拔电源|Chaos|Failure Scenario|实战测试)", content, re.IGNORECASE))
+                if not has_stress_test:
+                    score -= 10
+                    suggestions.append("OM 缺少合格性 '压力实战测试' (拔电源演练、容量成本测算、运维可观测性就绪) 记录")
+
         score = max(0, min(100, score))
+
 
 
 
