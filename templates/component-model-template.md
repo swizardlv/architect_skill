@@ -1,43 +1,116 @@
-# 逻辑与物理组件模型规约 (Component Model, CM)
+# 组件模型说明书 (Component Model - CM Template)
 
-> 架构视角：逻辑视角 (Logical View)  
-> 核心作用：定义系统的结构单元。包括组件职责、对外接口、交互协议（Sequence/Interaction）及内部依赖关系，通常分为逻辑组件与物理组件。
+> 本文档遵循 IBM Team Solution Design 与 Architecture Thinking 规范，作为承接 AOD 全景概览图、指导下游团队工程实现的核心架构解剖工件。
 
 ---
 
-## 1. 逻辑组件与物理组件划分 (Component Taxonomy)
+## 1. 逻辑组件模型 (Logical Component Model - Logical CM)
 
 ```mermaid
-graph TB
-    subgraph LogicalComponents["逻辑组件划分 (Logical Domain Model)"]
-        LC_Ingress["协议解析与验签组件 (Ingress Component)"]
-        LC_FSM["领域状态机驱动组件 (FSM Orchestrator)"]
-        LC_Deconflict["实时冲突预测与计算组件 (Deconflict Component)"]
-        LC_StoragePort["统一持久化端口 (Storage Port)"]
+flowchart TD
+    %% 样式表定义
+    classDef logicalComp fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a;
+    classDef interfaceNode fill:#ffffff,stroke:#0284c7,stroke-width:1px,stroke-dasharray: 2 2,color:#0369a1;
+
+    subgraph LayerIngress ["接入层组件 (Ingress Tier)"]
+        CompGateway["COMP-01: 接入适配组件<br/>(Ingress Adapter)"]:::logicalComp
     end
 
-    subgraph PhysicalComponents["物理部署映射 (Physical Deployables)"]
-        PC_Envoy["Envoy Proxy Pod (C++ / Envoy Filter)"]
-        PC_CoreService["Core Domain Service Pod (Go / Python / Rust)"]
-        PC_Redis["Redis Cluster (In-Memory Key-Value)"]
-        PC_DB["PostgreSQL / ClickHouse Cluster"]
+    subgraph LayerCore ["核心能力层组件 (Core Domain Tier)"]
+        direction TB
+        CompRisk["COMP-02: 实时风控组件<br/>(Risk Filter)"]:::logicalComp
+        CompSeq["COMP-03: 仲裁定序组件<br/>(Sequencer Engine)"]:::logicalComp
+        CompMatch["COMP-04: 业务撮合核心组件<br/>(Matching Core)"]:::logicalComp
     end
 
-    LC_Ingress -.->|"映射落地"| PC_Envoy
-    LC_FSM -.->|"映射落地"| PC_CoreService
-    LC_Deconflict -.->|"映射落地"| PC_CoreService
-    LC_StoragePort -.->|"驱动实现"| PC_Redis
-    LC_StoragePort -.->|"驱动实现"| PC_DB
+    subgraph LayerEgress ["分发与持久化组件 (Egress Tier)"]
+        CompDispatch["COMP-05: 事件分发组件<br/>(Event Dispatcher)"]:::logicalComp
+        CompLedger["COMP-06: 账本持久化组件<br/>(Ledger Store)"]:::logicalComp
+    end
+
+    %% 接口暴露与依赖连线 (无环有向图 DAG)
+    CompGateway -->|"依赖: IRiskValidation"| CompRisk
+    CompRisk -->|"依赖: ISequenceAllocation"| CompSeq
+    CompSeq -->|"依赖: IExecutionSubmit"| CompMatch
+    CompMatch -->|"依赖: IEventPublish"| CompDispatch
+    CompDispatch -->|"依赖: ILedgerAppend"| CompLedger
 ```
 
-## 2. 组件职责与接口依赖矩阵 (Component Responsibilities & Dependencies)
+---
 
-| 组件名称 | 类型 | 职责边界 | 暴露接口与协议 | 依赖组件 |
-| :--- | :--- | :--- | :--- | :--- |
-| **Ingress Component** | 接入层组件 | 终结 TLS、提取调用者标识、流量整流削峰 | gRPC / HTTP2 / Protobuf | 依赖安全凭证库与认证服务 |
-| **FSM Orchestrator** | 领域核心组件 | 承载聚合根、维护领域不变量、驱动状态跃迁 | 内部消息事件流 / 内存函数调用 | 依赖 Storage Port 与计算组件 |
-| **Deconflict Engine** | 计算核心组件 | 执行空间八叉树/H3索引碰撞检测，生成避让向量 | 内存原生调用 (C++/Rust FFI) | 依赖内存体素网格快照 |
-| **Storage Port Adapter** | 基础设施组件 | 实现领域模型到物理数据库表的双向映射与缓存穿透防护 | 专用数据库连接池 (TCP/SQL) | 依赖物理数据库集群 |
+## 2. 物理组件模型 (Physical Component Model - Physical CM)
 
-## 3. 组件交互时序规约 (Interaction Protocols)
-组件间交互遵循严格的依赖倒置（DIP）准则，核心领域组件绝不反向依赖物理基础设施。详细交互时序见同目录下的 [`interaction-sequence.mmd`](./interaction-sequence.mmd)。
+```mermaid
+flowchart TD
+    %% 物理构件样式
+    classDef binPkg fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a;
+    classDef storagePkg fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef protocolLink fill:#ffffff,stroke:#64748b,stroke-width:1px,color:#475569;
+
+    subgraph PhysicalArtifacts ["运行时部署构件 (Physical Deployment Packages)"]
+        PkgGW["ingress-gateway (用户态可执行文件)<br/>[协议: EF_VI / SBE Binary]"]:::binPkg
+        PkgCore["matching-core.so (C++ 独占绑核动态库)<br/>[通信: 无锁 SPSC RingBuffer]"]:::binPkg
+        PkgEgress["market-broadcaster (独立守护进程)<br/>[协议: UDP Multicast / ITCH 5.0]"]:::binPkg
+        PkgStorage["ledger-daemon (直接I/O落盘进程)<br/>[存储: NVMe O_DIRECT WAL]"]:::storagePkg
+    end
+
+    PkgGW ==>|"SPSC 内存环形总线"| PkgCore
+    PkgCore ==>|"事件输出总线"| PkgEgress
+    PkgCore ==>|"直接 I/O 环形写入"| PkgStorage
+```
+
+---
+
+## 3. 核心组件规范卡片集 (Component Specifications)
+
+### 3.1 COMP-01: 接入适配组件 (Ingress Adapter)
+| 规范要素 | 内容说明 |
+| :--- | :--- |
+| **组件标识** | `COMP-01: Ingress Adapter` |
+| **组件类型** | 边界通信组件（自研） |
+| **核心职责** | 终结网络连接，解析客户端报文，完成防重放时间戳校验 |
+| **提供接口 (Provided)**| `IIngressSession (connect, disconnect, receivePacket)` |
+| **依赖接口 (Required)**| `IRiskValidation (validateOrder), ISequenceAllocation (submitOrder)` |
+| **质量属性/NFR 要求** | 单包反序列化延迟 ≤ 300ns；吞吐量 ≥ 2,000,000 ops/s；无锁设计 |
+| **数据所有权 (Ownership)**| 独占管理外部会话连接描述符表与会话状态 |
+| **物理技术映射** | C++ 纯轮询用户态驱动进程，通过连续定长内存池分配报文 |
+
+---
+
+## 4. 核心架构场景动态时序验证 (Component Sequence Diagrams)
+
+### 场景一：常规业务黄金调用链路 (Happy Path)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant GW as COMP-01: Ingress
+    participant Risk as COMP-02: Risk
+    participant Seq as COMP-03: Sequencer
+    participant Core as COMP-04: Matching Core
+    participant Dispatch as COMP-05: Dispatcher
+
+    GW->>Risk: validateOrder(OrderRequest)
+    Risk-->>GW: ValidationResult(Approved)
+    GW->>Seq: submitOrder(OrderRequest)
+    Seq->>Core: executeOrder(SequencedOrder)
+    Core->>Dispatch: publishTradeEvents(ExecutionReport)
+    Dispatch-->>GW: notifyClient(Receipt)
+```
+
+---
+
+## 5. 领域数据所有权归属矩阵 (Data Ownership Matrix)
+
+| 业务数据实体 / 资产 | 独占写入组件 (Exclusive Owner) | 只读消费组件 (Read-Only Consumers) | 持久化与存储模式 |
+| :--- | :--- | :--- | :--- |
+| **AccountBalance (账户资金)** | COMP-02: 实时风控组件 | Ingress, Admin | 内存预扣表 + WAL 镜像 |
+| **OrderBookDepth (盘口深度)** | COMP-04: 撮合核心组件 | Dispatcher, MarketBroadcaster | 纯内存红黑树与双向链表 |
+| **ClearingAuditLog (审计日志)** | COMP-06: 账本持久化组件 | External Audit, Analytics | NVMe 追加写日志文件 |
+
+---
+
+## 6. CM 合格性“三道防线”评审自检记录
+
+- [ ] **防线一：外包/团队分配测试 (Team Allocation Test)**: 敏捷团队能否仅凭规范卡片中的 `Provided/Required` 接口独立开发？(合格)
+- [ ] **防线二：变更隔离测试 (Change Impact Test)**: 内部算法或存储重构是否不波及其他组件接口？(合格)
+- [ ] **防线三：OM 衔接测试 (Operational Readiness Test)**: SRE 能否依据物理 CM 直接推导部署拓扑与资源配置？(合格)

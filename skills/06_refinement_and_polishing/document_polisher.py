@@ -110,7 +110,37 @@ class ArchitectureDocumentPolisher:
                     score -= 10
                     suggestions.append("AOD 缺少合格性 '3 分钟压力测试' (The 3-Minute Test) 评审自检表")
 
+        # 5. CM (Component Model) 专属规范深度审计 (IBM 标准: 逻辑/物理双层演进与契约优先)
+        if "component-model" in file_path.name.lower():
+            # 检查是否包含逻辑与物理双层演进
+            has_dual_cm = bool(re.search(r"(Logical CM|逻辑组件)", content, re.IGNORECASE)) and \
+                          bool(re.search(r"(Physical CM|物理组件)", content, re.IGNORECASE))
+            if not has_dual_cm and file_path.suffix.lower() == ".md":
+                score -= 15
+                suggestions.append("CM 缺少 Logical CM (逻辑组件) 与 Physical CM (物理组件) 的双层演进映射")
+
+            # 检查是否明确标注 Provided 与 Required 接口
+            has_interfaces = bool(re.search(r"(Provided|提供接口)", content, re.IGNORECASE)) and \
+                             bool(re.search(r"(Required|依赖接口)", content, re.IGNORECASE))
+            if not has_interfaces:
+                score -= 15
+                suggestions.append("CM 缺少明确的 Provided (提供接口) 与 Required (依赖接口) 契约定义")
+
+            # 检查是否有数据所有权定义 (Data Ownership)
+            has_data_ownership = bool(re.search(r"(Data Ownership|数据归属|数据所有权)", content, re.IGNORECASE))
+            if not has_data_ownership and file_path.suffix.lower() == ".md":
+                score -= 10
+                suggestions.append("CM 缺少组件领域数据排他性所有权归属 (Data Ownership Matrix)")
+
+            # 检查是否有三道防线自检
+            if file_path.suffix.lower() == ".md":
+                has_three_defenses = bool(re.search(r"(三道防线|Team Allocation|团队分配|变更隔离)", content, re.IGNORECASE))
+                if not has_three_defenses:
+                    score -= 10
+                    suggestions.append("CM 缺少 '三道防线' (团队分配测试、变更隔离测试、OM衔接测试) 评审自检表")
+
         score = max(0, min(100, score))
+
 
 
         return DocumentQualityReport(

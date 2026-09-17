@@ -75,8 +75,11 @@ classDef mqStyle fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#581c87;
 
 架构设计必须守住“**严格分层抽象**”铁律，严禁跨层混淆：
 1. **概念与高层逻辑层 (AOD - Architecture Overview Diagram)**：面向业务赞助人与架构评审委员会，**技术无关 (Technology Agnostic)**。表达的是“统一接入反向代理”、“极速事前穿透风控”、“单线程确定性撮合核心”、“主数据分发中心”，严禁混入“MySQL 8.0”、“Kafka 3节点”、“Spring Boot”等具体物理软件。
-2. **逻辑组件与交互层 (CM - Component Model)**：面向研发主管与领域专家。界定子系统内部的逻辑组件、接口边界、调用时序（Sequence）与数据流向（Data Flow）。
+2. **逻辑组件与物理实现层 (CM - Component Model)**：面向研发主管与领域专家，作为系统内部的“工程解剖图”。
+   - **双层演进**: 必须包含从**逻辑组件模型 (Logical CM)**（聚焦职责、Provided 接口、Required 接口与数据所有权）向**物理组件模型 (Physical CM)**（绑定独立部署二进制构件、具体协议与数据格式）的平滑映射。
+   - **核心法则**: 严格遵守**单一职责**与**无环依赖原则 (ADP，形成 DAG)**，严禁跨组件私有数据穿透，且必须有 3~5 个重大架构场景的**组件时序图 (Sequence)** 作为动态验证闭环。
 3. **基础设施与拓扑层 (OM - Operational Model / DM)**：面向运维 SRE 与底层工程师。详细标定物理机型、网络分区、机房分布、NUMA 绑核、操作系统内核参数与具体数据库中间件实例。
+
 
 ```mermaid
 flowchart TD
