@@ -81,8 +81,8 @@ def test_build_interactive_html() -> None:
 
 
 def test_render_board_integration(temp_ws: Path) -> None:
-    """测试从完整 02-models/ 目录提取 5 维图表并生成画板."""
-    models_dir = temp_ws / "02-models"
+    """测试从完整 02-architecture-design/ 目录提取 5 维图表并生成画板."""
+    models_dir = temp_ws / "02-architecture-design"
     models_dir.mkdir(parents=True, exist_ok=True)
 
     (models_dir / "c4-context.mmd").write_text("graph TB\n C4Context", encoding="utf-8")

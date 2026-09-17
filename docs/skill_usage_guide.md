@@ -145,7 +145,7 @@ flowchart TD
 在实际研发与架构评审中，团队常有多个微服务或跨系统案例需要独立推演。为杜绝资产混乱，所有案例在测试区统一按独立目录组织：
 
 ```text
-arhitect_skill_tests/
+architect_skill_tests/
 ├── README.md                      # 案例集索引总览 (包含各案例直达链接)
 ├── cbs_engine/                    # 案例 1: 跨境清算与反洗钱推理系统
 │   ├── README.md                  # 该案例专属工程说明
@@ -171,4 +171,37 @@ python scripts/run_case_study.py <case_name>
 python scripts/run_case_study.py cbs_engine
 ```
 驱动脚本将自动创建隔离目录、推进状态机生命周期、生成交互画板与工程骨架，并同步更新根目录下的 `README.md` 索引。
+
+---
+
+## 四、元架构闭环演进：测试 -> 评审 -> 反推 -> 归档演进大循环
+
+系统在 `skills/05_audit_and_evolution/` 下提供了三位一体的闭环自愈能力，贯彻“**杜绝直接修改生成物，只修改主控与规范，通过重跑测试自愈达标**”的原则：
+
+```mermaid
+flowchart TD
+    Archive["0. 历史快照归档 (.archive/)<br/>Skill: generate_case_study_and_archive"]
+    Run["1. 案例执行与生成<br/>python scripts/run_case_study.py"]
+    Audit["2. 产出物深度技术审计<br/>Skill: audit_generated_architecture_assets"]
+    Evolve["3. 缺陷根因反推与定位<br/>Skill: feedback_loop_orchestrator_evolver"]
+    Patch["4. 升级主控状态机与规范<br/>skills/00-04, templates/"]
+
+    Archive --> Run
+    Run --> Audit
+    Audit -->|发现 P0/P1 缺陷| Evolve
+    Evolve --> Patch
+    Patch -->|推进下一轮验证| Archive
+    Audit -->|全部达标 零致命缺陷| Final["5. 最终签发准入进入编码"]
+```
+
+### 三大闭环 Skill 角色与使用说明：
+1. **测试案例生成与历史归档 (`generate_case_study_and_archive.md`)**：
+   - 在触发新推演前，自动将 `~/code/architect_skill_tests/<case_name>` 快照至 `.archive/round_YYYYMMDD_HHMMSS_<case_name>/`，防止历史痕迹覆盖。
+   - 编写或调整新的全流程推演驱动脚本（如 `scripts/cases/cbs_engine.py`），生成新鲜测试工程。
+2. **架构资产全方位审计 (`audit_generated_architecture_assets.md`)**：
+   - 针对最新生成的 `src/`、`04-contracts/` 与不变量进行代码级硬约束检查，出具 P0/P1/P2 缺陷报告。
+3. **评审问题反推与主控演进 (`feedback_loop_orchestrator_evolver.md`)**：
+   - 将缺陷按映射矩阵定位至主控门禁 `orchestrate_architecture_lifecycle.py`、Prompt 规范或模板。
+   - 升级主控引擎后，重新触发第 1 步并自动归档，形成持续自愈演进循环。
+
 

@@ -267,6 +267,7 @@ def build_interactive_html(
     document.documentElement.setAttribute("data-theme", currentTheme);
 
     function initMermaid(theme) {{
+      if (typeof mermaid === "undefined") return;
       mermaid.initialize({{
         startOnLoad: false,
         theme: theme === "dark" ? "dark" : "default",
@@ -314,6 +315,23 @@ def build_interactive_html(
       const item = diagrams[index];
       const code = item.code.trim();
       const uniqueId = "render_" + Math.random().toString(36).substr(2, 9);
+
+      if (typeof mermaid === "undefined") {{
+        const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        target.innerHTML = `
+          <div class="empty-state" style="max-width: 680px; text-align: left; background: var(--card-bg); padding: 24px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
+              ⚠️ 当前处于离线/物理隔离专网环境 (Mermaid 脚本未就绪)
+            </div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
+              检测到外部 CDN (<a href="https://cdn.jsdelivr.net" target="_blank" style="color: var(--accent);">cdn.jsdelivr.net</a>) 无法连通。
+              图表数据完整无损，您可以在本地内网搭建静态代理，或在下方直接查阅该图的确定性 Mermaid 架构源码：
+            </div>
+            <pre style="background: var(--bg-board); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; overflow-x: auto; color: var(--text-primary); border: 1px solid var(--border);">${{escapedCode}}</pre>
+          </div>
+        `;
+        return;
+      }}
 
       mermaid.render(uniqueId, code).then(({{ svg }}) => {{
         target.innerHTML = svg;
@@ -412,7 +430,10 @@ def render_board(
         Path: 生成的 HTML 绝对路径
     """
     ws = Path(workspace_root).resolve()
-    models_dir = ws / "02-models"
+    # 优先使用全新系统架构设计目录 02-architecture-design，若无则使用 02-models
+    models_dir = ws / "02-architecture-design"
+    if not models_dir.exists() and (ws / "02-models").exists():
+        models_dir = ws / "02-models"
     models_dir.mkdir(parents=True, exist_ok=True)
 
     diagram_sources: List[Tuple[str, Path]] = [

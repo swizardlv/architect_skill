@@ -79,13 +79,50 @@ def test_gatekeeper_blocks_invalid_json(temp_workspace: Path) -> None:
     fsm = ArchitectureLifecycleFSM(workspace_root=temp_workspace)
     fsm.advance()  # 进入 GRILLING
 
-    # 创建损坏的 JSON 文件
-    grounding_file = temp_workspace / "00-grounding" / "grounding-spec.json"
-    grounding_file.parent.mkdir(parents=True, exist_ok=True)
-    grounding_file.write_text("{ broken json: invalid }", encoding="utf-8")
+    # 在 GRILLING 阶段准备正常资产
+    req_dir = temp_workspace / "01-requirements"
+    req_dir.mkdir(parents=True, exist_ok=True)
+    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
+
+    fsm.advance(hitl_approved=True)  # 进入 GROUNDING
+    (req_dir / "non-functional-requirements.md").write_text("# NFR", encoding="utf-8")
+    (req_dir / "constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
+
+    fsm.advance()  # 进入 MODELING
+    arch_dir = temp_workspace / "02-architecture-design"
+    arch_dir.mkdir(parents=True, exist_ok=True)
+    (arch_dir / "system-overview.md").write_text("# Overview", encoding="utf-8")
+    (arch_dir / "domain-logical-model.md").write_text("# Domain", encoding="utf-8")
+    (arch_dir / "c4-context.mmd").write_text("C4Context\ntitle Context", encoding="utf-8")
+    (arch_dir / "c4-container-overview.mmd").write_text("C4Container\ntitle Overview", encoding="utf-8")
+
+    fsm.advance()  # 进入 CONTRACTS
+    eng_dir = temp_workspace / "03-engineering-and-physics"
+    (eng_dir / "adrs").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "contracts").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "deployment-architecture.md").write_text("# Deploy", encoding="utf-8")
+    (eng_dir / "data-architecture.md").write_text("# Data", encoding="utf-8")
+    (eng_dir / "observability-design.md").write_text("# Obs", encoding="utf-8")
+    (eng_dir / "failure-resilience-matrix.md").write_text("# Resilience", encoding="utf-8")
+    (eng_dir / "adrs" / "adr-index.md").write_text("# ADR", encoding="utf-8")
+    (eng_dir / "contracts" / "openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
+    (eng_dir / "contracts" / "interface-contracts-overview.md").write_text("# Contracts", encoding="utf-8")
+
+    fsm.advance(hitl_approved=True)  # 进入 SCAFFOLDING
+    scaff_dir = temp_workspace / "04-delivery-and-organization"
+    scaff_dir.mkdir(parents=True, exist_ok=True)
+    (scaff_dir / "organization-structure.md").write_text("# Org", encoding="utf-8")
+    (scaff_dir / "estimation-and-plan.md").write_text("# Plan", encoding="utf-8")
+    (scaff_dir / "first-step-poc.md").write_text("# PoC", encoding="utf-8")
+    (temp_workspace / ".agent-rules.md").write_text("# Rules", encoding="utf-8")
+
+    # 写入损坏的 JSON
+    broken_json = scaff_dir / "walking-skeleton-spec.json"
+    broken_json.write_text("{ broken json: invalid }", encoding="utf-8")
 
     with pytest.raises(GatekeeperError) as exc_info:
-        fsm.advance(hitl_approved=True)
+        fsm.advance()
 
     assert "JSON 解析失败" in str(exc_info.value) or "门禁存在未达成项" in str(exc_info.value)
 
@@ -95,10 +132,11 @@ def test_hitl_rejection_in_grilling(temp_workspace: Path) -> None:
     fsm = ArchitectureLifecycleFSM(workspace_root=temp_workspace)
     fsm.advance()  # 进入 GRILLING
 
-    # 写入合法的 grounding-spec.json
-    grounding_file = temp_workspace / "00-grounding" / "grounding-spec.json"
-    grounding_file.parent.mkdir(parents=True, exist_ok=True)
-    grounding_file.write_text(json.dumps({"status": "COMPLETED", "driver": "test"}), encoding="utf-8")
+    # 写入合法的 Layer 1 资产
+    req_dir = temp_workspace / "01-requirements"
+    req_dir.mkdir(parents=True, exist_ok=True)
+    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
 
     # 人工审核被拒绝 (hitl_approved=False)
     with pytest.raises(ReviewRejectedError) as exc_info:
@@ -106,7 +144,6 @@ def test_hitl_rejection_in_grilling(temp_workspace: Path) -> None:
 
     assert "人工审查拒绝放行" in str(exc_info.value)
     assert fsm.current_state == FSMState.GRILLING
-    # 检查历史中记录了 REJECT 动作
     assert any(rec.action == "REJECT" for rec in fsm.history)
 
 
@@ -116,10 +153,11 @@ def test_state_persistence_and_resume(temp_workspace: Path) -> None:
     fsm1.advance()  # 进入 GRILLING
     assert fsm1.current_state == FSMState.GRILLING
 
-    # 写入 grounding-spec.json 并批准跃迁至 GROUNDING
-    grounding_file = temp_workspace / "00-grounding" / "grounding-spec.json"
-    grounding_file.parent.mkdir(parents=True, exist_ok=True)
-    grounding_file.write_text(json.dumps({"status": "OK"}), encoding="utf-8")
+    # 写入 Layer 1 资产并批准跃迁至 GROUNDING
+    req_dir = temp_workspace / "01-requirements"
+    req_dir.mkdir(parents=True, exist_ok=True)
+    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
 
     fsm1.advance(hitl_approved=True)
     assert fsm1.current_state == FSMState.GROUNDING
@@ -139,56 +177,59 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     assert state == FSMState.GRILLING
 
     # 准备 GRILLING 资产
-    (temp_workspace / "00-grounding" / "grounding-spec.json").write_text(
-        json.dumps({"status": "OK"}), encoding="utf-8"
-    )
+    req_dir = temp_workspace / "01-requirements"
+    req_dir.mkdir(parents=True, exist_ok=True)
+    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "functional-requirements.md").write_text("# Functional", encoding="utf-8")
 
     # 2. GRILLING -> GROUNDING (HITL 批准)
     state, _ = fsm.advance(hitl_approved=True)
     assert state == FSMState.GROUNDING
 
     # 准备 GROUNDING 资产
-    (temp_workspace / "01-grounding" / "nfr-matrix.md").write_text("# NFR Matrix", encoding="utf-8")
-    (temp_workspace / "01-grounding" / "constraints-and-assumptions.md").write_text(
-        "# Constraints", encoding="utf-8"
-    )
+    (req_dir / "non-functional-requirements.md").write_text("# NFR Matrix", encoding="utf-8")
+    (req_dir / "constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
 
     # 3. GROUNDING -> MODELING
     state, _ = fsm.advance()
     assert state == FSMState.MODELING
 
     # 准备 MODELING 资产
-    (temp_workspace / "02-models" / "c4-context.mmd").write_text("C4Context\ntitle Context", encoding="utf-8")
-    (temp_workspace / "02-models" / "domain-logical-model.md").write_text(
-        "# Domain Model", encoding="utf-8"
-    )
-    (temp_workspace / "02-models" / "c4-container-overview.mmd").write_text(
-        "C4Container\ntitle Overview", encoding="utf-8"
-    )
+    arch_dir = temp_workspace / "02-architecture-design"
+    arch_dir.mkdir(parents=True, exist_ok=True)
+    (arch_dir / "system-overview.md").write_text("# System Overview", encoding="utf-8")
+    (arch_dir / "domain-logical-model.md").write_text("# Domain Model", encoding="utf-8")
+    (arch_dir / "c4-context.mmd").write_text("C4Context\ntitle Context", encoding="utf-8")
+    (arch_dir / "c4-container-overview.mmd").write_text("C4Container\ntitle Overview", encoding="utf-8")
 
     # 4. MODELING -> CONTRACTS
     state, _ = fsm.advance()
     assert state == FSMState.CONTRACTS
 
     # 准备 CONTRACTS 资产
-    (temp_workspace / "03-decisions" / "adr-index.md").write_text("# ADR Index", encoding="utf-8")
-    (temp_workspace / "04-contracts" / "openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
-    (temp_workspace / "03-decisions" / "failure-resilience-matrix.md").write_text(
-        "# Resilience", encoding="utf-8"
-    )
+    eng_dir = temp_workspace / "03-engineering-and-physics"
+    (eng_dir / "adrs").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "contracts").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "deployment-architecture.md").write_text("# Deployment Architecture", encoding="utf-8")
+    (eng_dir / "data-architecture.md").write_text("# Data Architecture", encoding="utf-8")
+    (eng_dir / "observability-design.md").write_text("# Observability", encoding="utf-8")
+    (eng_dir / "failure-resilience-matrix.md").write_text("# Resilience", encoding="utf-8")
+    (eng_dir / "adrs" / "adr-index.md").write_text("# ADR Index", encoding="utf-8")
+    (eng_dir / "contracts" / "openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
+    (eng_dir / "contracts" / "interface-contracts-overview.md").write_text("# Interface Contracts", encoding="utf-8")
 
     # 5. CONTRACTS -> SCAFFOLDING (HITL 批准)
     state, _ = fsm.advance(hitl_approved=True)
     assert state == FSMState.SCAFFOLDING
 
     # 准备 SCAFFOLDING 资产
+    scaff_dir = temp_workspace / "04-delivery-and-organization"
+    scaff_dir.mkdir(parents=True, exist_ok=True)
     (temp_workspace / ".agent-rules.md").write_text("# Rules", encoding="utf-8")
-    (temp_workspace / "04-execution" / "roadmap-and-first-step.md").write_text(
-        "# Roadmap", encoding="utf-8"
-    )
-    (temp_workspace / "04-execution" / "walking-skeleton-spec.json").write_text(
-        json.dumps({"skeleton": True}), encoding="utf-8"
-    )
+    (scaff_dir / "organization-structure.md").write_text("# Org", encoding="utf-8")
+    (scaff_dir / "estimation-and-plan.md").write_text("# Plan", encoding="utf-8")
+    (scaff_dir / "first-step-poc.md").write_text("# PoC", encoding="utf-8")
+    (scaff_dir / "walking-skeleton-spec.json").write_text(json.dumps({"skeleton": True}), encoding="utf-8")
 
     # 6. SCAFFOLDING -> FINALIZED
     state, _ = fsm.advance()
@@ -198,3 +239,4 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     state_final, msg = fsm.advance()
     assert state_final == FSMState.FINALIZED
     assert "已处于终态" in msg
+

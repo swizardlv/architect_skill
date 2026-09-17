@@ -33,8 +33,11 @@
 - `skills/02_structural_modeling/architecture_diagramming_principles.md`
 
 ### 3.2 产出文件与规范
-- 产出路径：`docs/architecture/02-models/c4-container-overview.mmd`
-- 格式规范：标准 Mermaid 拓扑图，注入语义调色板：
+1. **架构全景文字综述**：`docs/architecture/02-models/architecture-overview.md`
+   - 遵从 `templates/architecture-overview-template.md`。
+   - 详细论述系统使命、核心设计哲学、战略限界上下文映射表（Bounded Context Map）与集成边界文字说明。
+2. **物理容器图拓扑**：`docs/architecture/02-models/c4-container-overview.mmd`
+   - 标准 Mermaid 拓扑图，注入语义调色板：
 
 ```mermaid
 graph TB
@@ -82,10 +85,12 @@ graph TB
 ---
 
 ## 4. Gatekeeper Exit Criteria (准出门禁自查清单)
-在产出 `c4-container-overview.mmd` 前，必须完成以下自检：
+在推进阶段前，必须完成以下自检：
+- [ ] 输出系统的架构全景概览文档 `docs/architecture/02-models/architecture-overview.md`，包含设计原则与战略上下文映射。
 - [ ] 严格清晰地将系统划分为接入层、确定性外壳、概率推理内核与隔离沙箱四层。
 - [ ] 所有核心组件（网关、FSM 引擎、DB、Agent 运行器、剪枝中间件、缓存、沙箱）均具名且职责清晰。
 - [ ] 存储分层明确：区分了 ACID 持久化数据库与高速易失性账本缓存。
 - [ ] 连线涵盖了端到端调用闭环，标注了协议、步骤编号与操作语义。
 - [ ] 应用了标准组件语义配色，Mermaid 语法格式正确。
 - [ ] 产出物已持久化落盘至 `docs/architecture/02-models/c4-container-overview.mmd`。
+

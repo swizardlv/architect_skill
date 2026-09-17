@@ -246,6 +246,21 @@ class ArchitectureLifecycleFSM:
             except Exception as err:
                 invalid.append({"path": rel_path, "error": f"读取异常: {err}"})
 
+        # 针对 SCAFFOLDING 状态进行深度语义门禁校验
+        if state == FSMState.SCAFFOLDING and len(missing) == 0 and len(invalid) == 0:
+            spec_path = self.resolve_artifact_path("04-execution/walking-skeleton-spec.json")
+            if spec_path.exists():
+                try:
+                    spec_data = json.loads(spec_path.read_text(encoding="utf-8"))
+                    required_dirs = spec_data.get("directories", [])
+                    target_base = self.workspace_root.parent.parent
+                    for req_dir in required_dirs:
+                        d_path = target_base / req_dir
+                        if not d_path.exists():
+                            missing.append(f"骨架目录缺失: {req_dir}")
+                except Exception as err:
+                    invalid.append({"path": "04-execution/walking-skeleton-spec.json", "error": f"规范读取失败: {err}"})
+
         passed = (len(missing) == 0) and (len(invalid) == 0)
         message = "门禁检查通过" if passed else "门禁存在未达成项"
         return GatekeeperResult(

@@ -29,6 +29,10 @@ skills/
 ├── 04_execution_and_scaffolding/
 │   ├── bootstrap_walking_skeleton.md           # 工程物理骨架生成 Prompt
 │   └── sequence_delivery_milestones.md         # 敏捷里程碑与 First Step PoC Prompt
+├── 05_audit_and_evolution/
+│   ├── generate_case_study_and_archive.md      # 测试案例生成与历史版本归档器
+│   ├── audit_generated_architecture_assets.md  # 架构资产全方位技术审计器
+│   └── feedback_loop_orchestrator_evolver.md   # 评审问题反推与主控演进器
 templates/                                      # 产出文档的标准 Markdown / YAML 模板
 │   ├── nfr-matrix-template.md
 │   ├── constraints-template.md

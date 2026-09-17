@@ -30,15 +30,21 @@
 - `docs/architecture/03-decisions/failure-resilience-matrix.md`
 
 ### 3.2 产出文件与规范
-- 产出路径：`docs/architecture/04-execution/roadmap-and-first-step.md`
-- 格式规范：标准 Markdown 说明文档，包含风险识别、Milestone 0 穿刺规范与纵向切片演进表格。
+- 产出路径：
+  - `docs/architecture/04-execution/organization-and-plan.md` (组织拓扑、康威定律映射、故事点估算与双周交付计划)
+  - `docs/architecture/04-execution/roadmap-and-first-step.md` (敏捷路线图、穿刺测试规范与 Milestone 演进清单)
+- 格式规范：标准 Markdown 说明文档，分别遵从 `templates/organization-and-plan-template.md` 与敏捷路线图规范。
 
 ---
 
 ## 4. Gatekeeper Exit Criteria (准出门禁自查清单)
-在产出 `roadmap-and-first-step.md` 前，必须完成以下自检：
+在推进阶段前，必须完成以下自检：
+- [ ] 产出符合 Layer 4 规范的组织与交付计划文档 `docs/architecture/04-execution/organization-and-plan.md`。
+- [ ] 显式应用康威定律将团队拓扑与领域限界上下文对齐，界定代码所有权（Code Ownership）。
+- [ ] 采用标准估算方法提供模块故事点拆解与技术风险缓冲系数。
 - [ ] 显式指出了全系统最致命的技术风险假设（Key Risk Spike）。
 - [ ] Milestone 0 规划了聚焦核心风险的最小穿刺测试闭环，工期通常 <= 3 天。
 - [ ] Milestone 0 附带了明确、可判定的 Definition of Done (DoD)。
 - [ ] 后续 Phase 拆分为端到端纵向切片，每一阶段均具备验证门禁。
 - [ ] 产出物已持久化落盘至 `docs/architecture/04-execution/roadmap-and-first-step.md`。
+

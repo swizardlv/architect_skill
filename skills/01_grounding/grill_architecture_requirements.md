@@ -65,12 +65,17 @@
 }
 ```
 
+### 3.3 架构师可读文字规约 (`business-driver-and-use-cases.md`)
+除了机器可读的 JSON 以外，必须依据 `templates/business-driver-and-use-cases-template.md` 同步输出系统业务驱动力、用户角色分类、详细用例规约（UC-01 至 UC-0N）及棕地/现有环境分析文本文档，为专业架构评审提供深度的文字上下文。
+
 ---
 
 ## 4. Gatekeeper Exit Criteria (准出门禁自查清单)
-只有当以下所有条件确认达成时，方可终止深挖并输出 `grounding-spec.json`：
+只有当以下所有条件确认达成时，方可终止深挖并推进阶段：
 - [ ] 核心业务驱动力明确单一，排除了所有技术自嗨与虚荣指标。
 - [ ] 至少 3 项关键非功能指标（延迟、QPS、RPO/RTO、预算）具备定量数值。
 - [ ] 至少识别出 2 项领域绝不可被破坏的硬约束/不变量（Invariants）。
 - [ ] 团队维护边界、技术栈白名单及遗留系统集成限制已锁定。
-- [ ] 输出了符合 JSON Schema 的 `grounding-spec.json`，并由用户在交互端确认。
+- [ ] 输出了符合 JSON Schema 的 `00-grounding/grounding-spec.json`。
+- [ ] 输出了符合 Layer 1 规范的完整文字说明文档 `00-grounding/business-driver-and-use-cases.md`。
+

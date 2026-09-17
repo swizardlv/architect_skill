@@ -11,7 +11,9 @@
   - `docs/architecture/`（所有架构设计文档、C4 视图、ADR 记录）
   - `04-contracts/` 或 `src/contracts/`（OpenAPI Spec、Protobuf、JSON Schema 定义）
   - `src/domain/types/` 或 `src/domain/interfaces/`（强类型基准接口与实体定义）
+  - `src/domain/models.py`（核心聚合根与不变量定义）
   - `src/ports/`（核心六边形抽象端口定义）
+  - `tests/test_domain_invariants.py`（核心不变量守护断言）
 - **铁律**：下游编码只能面向上述接口与契约编写具体实现，**严禁为了让代码跑通而私自篡改、删减或放宽接口签名与字段定义**。如需改动契约，必须回退至架构状态机重新发起评审。
 
 ### 2. 单向依赖倒置红线 (Strict Dependency Inversion)
@@ -21,6 +23,8 @@
   - `adapters/` 和 `infrastructure/` 只能单向依赖 `domain/` 和 `ports/`，内层核心绝对不可感知外层实现细节。
 
 ### 3. 测试沙箱自检闭环红线 (Closed-Loop Test Verification)
+- **基线先行**：
+  - 在开始编写任何实现前，必须先在本地执行 `pytest`，确认既有的核心不变量测试基线全绿。
 - **先验证后提交**：
   - 在向用户提交代码或标记任务完成前，必须在本地沙箱环境内依次通过：
     1. 静态代码分析与代码格式检查：`npm run lint` 或 `ruff check .`
