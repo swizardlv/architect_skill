@@ -53,6 +53,36 @@ tests/
 
 ---
 
+## 这些 Skill 到底怎么用？(实操使用方式)
+
+详细操作与人机协同流程请参阅专属指南：👉 **[docs/skill_usage_guide.md](docs/skill_usage_guide.md)**
+
+本项目提供三种灵活的使用形态：
+
+### 形态 1：主控状态机联动驱动 (推荐的端到端架构推导)
+由确定性 FSM 把控流程流转与门禁拦截，各阶段调用对应的 Skill 进行生成：
+```bash
+# 1. 运行状态机，查看当前阶段（如 GRILLING）与要求产出的目标文件
+python run.py --step
+
+# 2. 将当前阶段的 Skill（如 skills/01_grounding/grill_architecture_requirements.md）
+#    作为 Prompt 喂给 AI Agent 进行交互推演，产物保存至 docs/architecture/
+
+# 3. 产物落盘后，再次运行推进命令，状态机自动执行门禁自检与人机审核卡点（HITL）
+python run.py --step
+```
+
+### 形态 2：作为 AI 辅助工具的 System Prompt / Skill 注入
+- **在 Cursor / Windsurf 中**：通过 `@grill_architecture_requirements.md` 引用对应 Skill，让 AI 严格按照 Prompt 规则对你进行苏格拉底式审问或 C4 建模。
+- **在 Claude Code / 自研 Agent 中**：将 `skills/**/*.md` 直接配置为 Agent 的专门 Skill 或 Subagent 角色指令。
+
+### 形态 3：单点独立使用 (离线设计与评审)
+无需启动整个生命周期，直接按需调用：
+- 想写一份标准的架构决策？直接参考 `skills/03_contracts_and_decisions/record_architecture_decision.md` 并套用 `templates/adr-template.md`。
+- 想厘清系统与外部三方的依赖与防腐层？直接使用 `skills/02_structural_modeling/generate_system_context.md` 绘制 Mermaid C4 图。
+
+---
+
 ## 快速开始
 
 ### 1. 运行质量检查与测试套件

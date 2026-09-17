@@ -67,3 +67,14 @@ python run.py --reset
 `docs/architecture/.state.json`
 
 包含当前状态、元数据时间戳以及每一次跃迁动作的审计历史（含人工审批记录与打回原因）。若会话意外中断，直接再次运行 `python run.py` 即可无缝承接上次中断点。
+
+---
+
+## 5. 编排引擎与 Skill 协同实操闭环
+
+编排引擎本身并不直接调用大模型，而是充当**确定性调度总线**：
+1. **状态机通知需求**：运行 `python run.py --step`，状态机输出当前阶段激活的 Skill 路径与所需交付的资产清单。
+2. **AI Agent 执行推理**：开发者将该阶段关联的 Skill Markdown 文件作为 Prompt 喂给 AI Agent（例如 Claude Code、Cursor），由 Agent 生成符合 Schema 的结构化资产并写入对应目录。
+3. **状态机校验与卡点**：开发者再次运行 `python run.py --step`，状态机通过自动化规则校验文件非空与结构有效性，并在关键阶段挂起等待人工签署确认。
+
+> 详尽的 Skill 使用方法与场景实战请参阅：[docs/skill_usage_guide.md](../../docs/skill_usage_guide.md)。

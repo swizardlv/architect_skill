@@ -61,7 +61,26 @@ tests/
 
 ---
 
-## 4. 运行与验证指令
+## 4. Skill 实战使用指引与人机协同工作流
+
+本系统中的 12 个 Skill 既支持通过 FSM 状态机端到端驱动，也支持作为独立 Prompt 注入给各类 AI 智能体（如 Cursor、Windsurf、Claude Code）：
+
+### 4.1 核心操作模式
+1. **主控状态机驱动模式（推荐）**：
+   - 开发者运行 `python run.py --step` 查看当前阶段与要求产出。
+   - 将对应阶段的 Skill 提示词输入给 AI 智能体，智能体结合业务输入完成产物生成并落盘至 `docs/architecture/`。
+   - 再次运行 `python run.py --step`，状态机执行门禁校验与人工审核（HITL），通过后推进至下一阶段。
+2. **AI 辅助工具 Prompt 挂载**：
+   - 在 Cursor 或 Windsurf 中直接使用 `@grill_architecture_requirements.md` 进行苏格拉底式深挖；
+   - 引用 `@generate_system_context.md` 驱动大模型输出高质量的 C4 Context Mermaid 拓扑图。
+3. **下游 Vibe Coding 防护约束**：
+   - 状态机最终生成的 `.agent-rules.md` 锁定契约只读、单向依赖倒置与测试闭环，防止 AI 在后续编码中产生架构漂移。
+
+> 完整实操步骤、输入依赖与逐步演练细节请参阅：[docs/skill_usage_guide.md](skill_usage_guide.md)。
+
+---
+
+## 5. 运行与验证指令
 
 ```bash
 # 执行单元测试套件
@@ -80,7 +99,7 @@ python run.py --auto-approve
 
 ---
 
-## 5. CI 持续集成与自动化流水线 (GitHub Actions)
+## 6. CI 持续集成与自动化流水线 (GitHub Actions)
 
 项目内置 `.github/workflows/ci.yml` 自动化工作流，在提交或拉取请求时自动触发：
 1. **多版本矩阵验证**：覆盖 Python 3.11 与 3.12 运行时。
