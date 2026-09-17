@@ -173,6 +173,46 @@ class ArchitectureDocumentPolisher:
                     score -= 10
                     suggestions.append("OM 缺少合格性 '压力实战测试' (拔电源演练、容量成本测算、运维可观测性就绪) 记录")
 
+        # 7. AD/ADR (Architecture Decision Record) 专属规范深度审计 (IBM 标准: 权衡闭环、多方案与代价缓解)
+        is_adr_file = (
+            file_path.name.lower().startswith("adr-") or "/adrs/" in str(file_path).lower()
+        ) and "adr-index" not in file_path.name.lower()
+
+        if is_adr_file and file_path.suffix.lower() == ".md":
+            # 检查状态与元数据
+            has_status_and_owner = bool(
+                re.search(r"(状态|Status)[^\n:]*[:*]+\s*(Proposed|Accepted|Rejected|Deprecated|Superseded|提议|已接受|已废弃|被取代)", content, re.IGNORECASE)
+            ) and bool(re.search(r"(决策人|决策责任人|Owner|Architect)", content, re.IGNORECASE))
+            if not has_status_and_owner:
+                score -= 10
+                suggestions.append("ADR 缺少标准状态生命周期元数据 (Proposed/Accepted/Deprecated/Superseded) 或决策责任人")
+
+            # 检查备选方案客观评估与对比矩阵
+            has_alternatives = bool(re.search(r"(备选方案|Options Considered|候选方案)", content, re.IGNORECASE))
+            has_comparison_matrix = bool(re.search(r"\|.*(对比|Trade-off|方案).*\|", content, re.IGNORECASE))
+            has_rejection_reason = bool(re.search(r"(否决|Rejected|被否决)", content, re.IGNORECASE))
+            if not (has_alternatives and (has_comparison_matrix or has_rejection_reason)):
+                score -= 15
+                suggestions.append("ADR 缺少客观的备选方案多维对比矩阵 (Trade-off Matrix) 或被否决方案根因分析")
+
+            # 检查负面代价与工程妥协 (严禁一言堂与不谈代价)
+            has_tradeoffs = bool(re.search(r"(代价|负向妥协|负面代价|Negative Consequences|Trade-offs?)", content, re.IGNORECASE))
+            if not has_tradeoffs:
+                score -= 15
+                suggestions.append("ADR 缺少显式的负面代价与技术妥协 (Negative Consequences & Trade-offs) 剖析")
+
+            # 检查工程缓解与补偿策略 (Mitigations)
+            has_mitigation = bool(re.search(r"(缓解|Mitigation|兜底|补偿策略)", content, re.IGNORECASE))
+            if not has_mitigation:
+                score -= 15
+                suggestions.append("ADR 缺少针对负面代价的具体工程缓解与补偿防线 (Mitigations & Compensating Controls)")
+
+            # 检查落地遵从性与架构守护
+            has_compliance = bool(re.search(r"(遵从性|Compliance|架构守护|验证检查|静态架构规则)", content, re.IGNORECASE))
+            if not has_compliance:
+                score -= 10
+                suggestions.append("ADR 缺少自动化落地遵从性与架构守护检查清单 (Compliance Verification)")
+
         score = max(0, min(100, score))
 
 
