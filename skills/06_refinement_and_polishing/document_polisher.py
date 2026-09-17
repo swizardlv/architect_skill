@@ -213,6 +213,56 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("ADR 缺少自动化落地遵从性与架构守护检查清单 (Compliance Verification)")
 
+        # 8. ARC (Architecture Requirements Checklist) 专属规范深度审计 (IBM URPS+ 标准)
+        is_arc_file = "requirements-checklist" in file_path.name.lower() or "arc-" in file_path.name.lower()
+
+        if is_arc_file and file_path.suffix.lower() == ".md":
+            # 检查 URPS+ 维度覆盖
+            has_urps_perf = bool(re.search(r"(Performance|性能|吞吐|时延|Latency|TPS|QPS)", content, re.IGNORECASE))
+            has_urps_avail = bool(re.search(r"(Availability|可用性|容灾|Resiliency|RTO|RPO|SLA)", content, re.IGNORECASE))
+            has_urps_sec = bool(re.search(r"(Security|安全|合规|Compliance|mTLS|HSM|加密)", content, re.IGNORECASE))
+            has_urps_ops = bool(re.search(r"(Observability|Manageability|可观测|运维|Trace|监控|APM)", content, re.IGNORECASE))
+            has_urps_int = bool(re.search(r"(Integrability|Portability|集成|可移植|协议|兼容)", content, re.IGNORECASE))
+
+            missing_dims = []
+            if not has_urps_perf:
+                missing_dims.append("Performance")
+            if not has_urps_avail:
+                missing_dims.append("Availability")
+            if not has_urps_sec:
+                missing_dims.append("Security")
+            if not (has_urps_ops or has_urps_int):
+                missing_dims.append("Observability/Integrability")
+
+            if len(missing_dims) >= 2:
+                score -= 15
+                suggestions.append(f"ARC 缺少关键 URPS+ 质量属性维度覆盖: {missing_dims}")
+
+            # 检查是否有场景化表达 (SEI 6 要素或 Scenario)
+            has_scenario = bool(re.search(r"(Scenario|场景|刺激|Stimulus|Response)", content, re.IGNORECASE))
+            if not has_scenario:
+                score -= 10
+                suggestions.append("ARC 缺少 SEI 场景化表达 (Quality Attribute Scenario: 刺激源、刺激、环境与响应)")
+
+            # 检查是否包含架构推导映射 (Mapping to CM / OM / ADR)
+            has_mapping = bool(re.search(r"(CM|OM|ADR|架构推导|设计映射|Mapping)", content))
+            if not has_mapping:
+                score -= 15
+                suggestions.append("ARC 缺少与下游架构设计 (CM 组件 / OM 拓扑 / ADR 决策) 的双向推导映射")
+
+            # 检查量化指标度量与验收手段
+            has_quantified_metrics = bool(re.search(r"(P9[0-9]|TPS|QPS|RTO|RPO|µs|ms|%|SLA)", content))
+            if not has_quantified_metrics:
+                score -= 15
+                suggestions.append("ARC 缺少可测试量化指标 (如 P99, TPS, RTO, RPO, µs)，存在空泛描述")
+
+            # 检查闭环状态与验证方法
+            has_status_and_verify = bool(re.search(r"(Verified|Approved|Closed|已验证|已批准|关闭|Status|状态)", content, re.IGNORECASE)) and \
+                                    bool(re.search(r"(验证|Verification|压测|演练|测试|Benchmark)", content, re.IGNORECASE))
+            if not has_status_and_verify:
+                score -= 10
+                suggestions.append("ARC 缺少明确的自动化验证方式或闭环跟踪状态 (Status: Verified/Approved/Closed)")
+
         score = max(0, min(100, score))
 
 
