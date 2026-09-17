@@ -263,6 +263,74 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("ARC 缺少明确的自动化验证方式或闭环跟踪状态 (Status: Verified/Approved/Closed)")
 
+        # 9. Business Drivers / Goals 专属规范深度审计 (IBM 商业目标第一源头标准)
+        is_drivers_file = "business-driver" in file_path.name.lower() or "business-goal" in file_path.name.lower()
+
+        if is_drivers_file and file_path.suffix.lower() == ".md":
+            # 检查是否为商业结果驱动 (Outcome-driven)
+            has_outcomes = bool(re.search(r"(Outcome|商业回报|商业价值|战略回报|ROI|收益)", content, re.IGNORECASE))
+            if not has_outcomes:
+                score -= 15
+                suggestions.append("业务目标缺少明确的商业回报与成果导向 (Outcome-driven) 阐述")
+
+            # 检查 SMART 量化指标与优先级
+            has_smart_metrics = bool(re.search(r"(\d+%|\d+倍|TPS|P9[0-9]|P0|P1|优先级|SMART)", content))
+            if not has_smart_metrics:
+                score -= 15
+                suggestions.append("业务目标缺少量化基准 (SMART 指标) 或优先级排序 (P0/P1)")
+
+            # 检查“为什么重要”逆向穿透或架构重大性筛选
+            has_significance_filter = bool(re.search(r"(So What|为什么重要|架构重大性|Significance Filtering|重大架构)", content, re.IGNORECASE))
+            if not has_significance_filter:
+                score -= 10
+                suggestions.append("业务目标缺少'为什么重要'逆向穿透测试 (The So What? Test) 或架构重大性筛选表")
+
+            # 检查架构驱动力矩阵 (Driver Matrix 映射)
+            has_driver_matrix = bool(re.search(r"(Driver Matrix|架构驱动力|驱动的架构关注点|Architectural Impact)", content, re.IGNORECASE))
+            if not has_driver_matrix:
+                score -= 10
+                suggestions.append("业务目标缺少结构化的架构驱动力矩阵 (Driver Matrix) 映射至 CM/OM/ADR")
+
+            # 检查业务赞助人双向确认 (Playback & Sign-off)
+            has_playback = bool(re.search(r"(Playback|双向确认|业务赞助人|Sponsor Sign-off|对齐签署)", content, re.IGNORECASE))
+            if not has_playback:
+                score -= 10
+                suggestions.append("业务目标缺少业务赞助人双向确认与冻结签署 (Playback & Sponsor Sign-off)")
+
+        # 10. Constraints & Assumptions 专属规范深度审计 (IBM 不可逾越边界三大范畴标准)
+        is_constraints_file = "constraints" in file_path.name.lower() or "invariants" in file_path.name.lower()
+
+        if is_constraints_file and file_path.suffix.lower() == ".md":
+            # 检查三大分类覆盖 (BC/TC/LC)
+            has_bc = bool(re.search(r"(组织约束|业务约束|交付时间|时间窗口|团队技能|康威定律|BC-)", content, re.IGNORECASE))
+            has_tc = bool(re.search(r"(技术约束|遗留资产|利旧|既有系统|部署环境|硬件|TC-)", content, re.IGNORECASE))
+            has_lc = bool(re.search(r"(合规|监管|法律|数据主权|GDPR|牌照|审计|LC-)", content, re.IGNORECASE))
+
+            missing_constraint_types = []
+            if not has_bc:
+                missing_constraint_types.append("业务与组织约束 (BC)")
+            if not has_tc:
+                missing_constraint_types.append("技术与遗留资产约束 (TC)")
+            if not has_lc:
+                missing_constraint_types.append("法律合规监管红线 (LC)")
+
+            if missing_constraint_types:
+                score -= 15
+                suggestions.append(f"约束条件缺少关键范畴覆盖: {missing_constraint_types}")
+
+            # 检查约束与选择区分检验 (Constraint vs Decision Test)
+            has_decision_distinction = bool(re.search(r"(Constraint vs|约束与决策|约束与选择|个人技术偏好|区分检验)", content, re.IGNORECASE))
+            if not has_decision_distinction:
+                score -= 10
+                suggestions.append("缺少'约束与选择区分检验' (Constraint vs. Decision Test)，未能有效排除个人技术偏好")
+
+            # 检查显式假设的失效触发条件 (Invalidation Trigger)
+            has_assumptions = bool(re.search(r"(假设|Assumption|ASM-)", content, re.IGNORECASE))
+            has_invalidation_trigger = bool(re.search(r"(失效触发|Invalidation Trigger|失效后)", content, re.IGNORECASE))
+            if has_assumptions and not has_invalidation_trigger:
+                score -= 10
+                suggestions.append("核心架构假设缺少明确的失效触发条件 (Invalidation Trigger) 与演进应对预案")
+
         score = max(0, min(100, score))
 
 
