@@ -269,7 +269,7 @@ class ArchitectureLifecycleFSM:
                             })
 
                 # 针对 functional-requirements.md 进行深度语义校验: 必须包含具体功能需求规约(FR清单)
-                if full_path.name.lower() == "functional-requirements.md":
+                if re.search(r"(^|-)functional-requirements\.md$", full_path.name.lower()) and "non-functional" not in full_path.name.lower():
                     has_fr = bool(re.search(r"(###?\s*.*(功能需求|FR-|\d+\.\s*功能需求))", content))
                     if not has_fr:
                         invalid.append({
@@ -278,7 +278,7 @@ class ArchitectureLifecycleFSM:
                         })
 
                 # 针对 architecture-requirements-checklist.md 进行深度语义校验: 必须包含 ARC 质量闭环追踪表
-                if full_path.name.lower() == "architecture-requirements-checklist.md":
+                if "architecture-requirements-checklist" in full_path.name.lower():
                     has_arc_table = bool(re.search(r"(ARC-\d+|质量属性类别|量化设计指标)", content))
                     if not has_arc_table:
                         invalid.append({
@@ -291,7 +291,9 @@ class ArchitectureLifecycleFSM:
 
         # 针对 SCAFFOLDING 状态进行深度语义门禁校验
         if state == FSMState.SCAFFOLDING and len(missing) == 0 and len(invalid) == 0:
-            spec_path = self.resolve_artifact_path("04-delivery-and-organization/walking-skeleton-spec.json")
+            spec_path = self.resolve_artifact_path("04-delivery-and-organization/04-04-walking-skeleton-spec.json")
+            if not spec_path.exists():
+                spec_path = self.resolve_artifact_path("04-delivery-and-organization/walking-skeleton-spec.json")
             if not spec_path.exists():
                 spec_path = self.resolve_artifact_path("04-execution/walking-skeleton-spec.json")
             if spec_path.exists():
@@ -304,7 +306,7 @@ class ArchitectureLifecycleFSM:
                         if not d_path.exists():
                             missing.append(f"骨架目录缺失: {req_dir}")
                 except Exception as err:
-                    invalid.append({"path": "04-delivery-and-organization/walking-skeleton-spec.json", "error": f"规范读取失败: {err}"})
+                    invalid.append({"path": "04-delivery-and-organization/04-04-walking-skeleton-spec.json", "error": f"规范读取失败: {err}"})
 
         passed = (len(missing) == 0) and (len(invalid) == 0)
         message = "门禁检查通过" if passed else "门禁存在未达成项"

@@ -36,10 +36,11 @@ def ensure_case_workspace(case_dir: Path) -> None:
     tests_dir = case_dir / "tests"
 
     for sub in [
-        arch_dir / "01-grounding",
-        arch_dir / "02-models",
-        arch_dir / "03-decisions",
-        arch_dir / "04-execution",
+        arch_dir / "01-requirements",
+        arch_dir / "02-architecture-design",
+        arch_dir / "03-engineering-and-physics",
+        arch_dir / "03-engineering-and-physics" / "03-08-adrs",
+        arch_dir / "04-delivery-and-organization",
         src_dir / "domain",
         src_dir / "ports",
         src_dir / "adapters",

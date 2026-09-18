@@ -1,8 +1,10 @@
 """架构可视化画板渲染引擎 (Architecture Board HTML Renderer).
 
-吸收 Archify 等现代化架构工具的精髓，将系统建模产出的 Mermaid/C4 图表
-统一编译为单文件、自包含、支持深浅主题切换、平移缩放 (Pan & Zoom) 与
-高质量导出的交互式 HTML 架构全景画板。
+吸收 Archify 等现代化架构看板工具的精髓，将系统四层生命周期中产生的所有
+编号规范输出物（需求、AOD/C4/CM/CDM/OM 图谱、ADR 决策、OpenAPI 契约、组织计划）
+统一编译为单文件、自包含、支持深浅主题切换、平移缩放 (Pan & Zoom)、高清矢量导出
+与全文规约阅读的交互式 HTML 架构看板。
+看板内容严格按照输出物编号递增顺序组织与呈现。
 """
 
 from __future__ import annotations
@@ -12,18 +14,22 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def extract_mermaid_code(file_path: Path) -> str:
     """从 .mmd 或 .md 文件中提取纯净的 Mermaid 图表源码."""
     if not file_path.exists():
         return ""
-    content = file_path.read_text(encoding="utf-8").strip()
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+
     if file_path.suffix.lower() == ".mmd":
         return content
 
-    # 若为 markdown 文件，正则提取 ```mermaid 代码块
+    # 若为 markdown 文件，正则提取第一个 ```mermaid 代码块
     matches = re.findall(r"```mermaid\s*\n(.*?)\n```", content, re.DOTALL)
     if matches:
         return matches[0].strip()
@@ -31,16 +37,11 @@ def extract_mermaid_code(file_path: Path) -> str:
 
 
 def validate_mermaid_syntax(code: str) -> Tuple[bool, str]:
-    """静态检查 Mermaid 代码的语法基础合法性，防止前端渲染报错.
-
-    Returns:
-        Tuple[bool, str]: (是否通过, 错误信息描述)
-    """
+    """静态检查 Mermaid 代码的语法基础合法性，防止前端渲染报错."""
     cleaned = code.strip()
     if not cleaned:
         return False, "Mermaid 代码为空"
 
-    # 检查合法开头
     valid_headers = (
         "graph", "flowchart", "sequencediagram", "classdiagram",
         "statediagram", "statediagram-v2", "erdiagram", "gantt",
@@ -50,27 +51,214 @@ def validate_mermaid_syntax(code: str) -> Tuple[bool, str]:
     if not any(first_line.startswith(h) for h in valid_headers):
         return False, f"未知的 Mermaid 图表声明: '{first_line}'，必须以有效图类型开头"
 
-    # 检查常见的破坏性语法: 未在引号内的裸 < 或 > 处于节点标签中导致 HTML 解析失败
-    # 例如: Ingest[数据 < 2小时] 应为 Ingest["数据 < 2小时"]
+    # 检查未在引号内的裸 < 或 > 处于节点标签中
     unquoted_tag_pattern = re.compile(r'\[([^"\]]*?[<>][^"\]]*?)\]')
     matches = unquoted_tag_pattern.findall(cleaned)
     if matches:
-        return False, f"节点文本包含未加双引号的 '<' 或 '>' 字符: '{matches[0]}'，必须使用双引号包裹，如 [\"文本 < 标签\"]"
+        return False, f"节点文本包含未加双引号的 '<' 或 '>' 字符: '{matches[0]}'，必须使用双引号包裹"
 
     return True, ""
 
 
+def parse_artifact_number(filename: str, rel_path: str) -> Tuple[str, str]:
+    """从文件名或相对路径中提取出标准编号 (如 01-01, 02-04, 03-08-01 等)."""
+    # 匹配例如 01-02 或 03-08-01
+    m = re.search(r"\b(\d{2}-\d{2}(?:-\d{2})?)\b", filename)
+    if m:
+        return m.group(1), m.group(1)
+
+    # 尝试从路径的父目录和文件名推断
+    parts = Path(rel_path).parts
+    if len(parts) >= 2:
+        dir_m = re.match(r"^(\d{2})", parts[0])
+        if dir_m:
+            stage_num = dir_m.group(1)
+            # 常见文件名映射
+            known_mapping = {
+                "business-drivers": f"{stage_num}-01",
+                "functional-requirements": f"{stage_num}-02",
+                "non-functional-requirements": f"{stage_num}-03",
+                "nfr-matrix": f"{stage_num}-03",
+                "architecture-requirements-checklist": f"{stage_num}-04",
+                "constraints-and-assumptions": f"{stage_num}-05",
+                "system-overview": f"{stage_num}-01",
+                "architecture-overview-diagram": f"{stage_num}-02",
+                "c4-context": f"{stage_num}-03",
+                "component-model": f"{stage_num}-04",
+                "c4-container-overview": f"{stage_num}-05",
+                "domain-logical-model": f"{stage_num}-06",
+                "conceptual-data-model": f"{stage_num}-06",
+                "sequence-and-dataflow": f"{stage_num}-07",
+                "operational-model": f"{stage_num}-01",
+                "deployment-architecture": f"{stage_num}-02",
+                "data-architecture": f"{stage_num}-03",
+                "observability-design": f"{stage_num}-04",
+                "failure-resilience-matrix": f"{stage_num}-05",
+                "interface-contracts-overview": f"{stage_num}-06",
+                "openapi": f"{stage_num}-07",
+                "adr-index": f"{stage_num}-08-00",
+                "organization-structure": f"{stage_num}-01",
+                "estimation-and-plan": f"{stage_num}-02",
+                "roadmap-and-first-step": f"{stage_num}-02",
+                "first-step-poc": f"{stage_num}-03",
+                "poc-charter-and-report": f"{stage_num}-03",
+                "walking-skeleton-spec": f"{stage_num}-04",
+                "agent-rules": f"{stage_num}-05",
+            }
+            for k, v in known_mapping.items():
+                if k in filename.lower():
+                    return v, v
+            return f"{stage_num}-99", f"{stage_num}-99"
+
+    return "99-99", "99-99"
+
+
+def extract_artifact_title(file_path: Path, num_str: str) -> str:
+    """提取输出物可读标题."""
+    name_stem = file_path.stem
+    # 去除前缀数字
+    clean_name = re.sub(r"^\d{2}-\d{2}(?:-\d{2})?-?", "", name_stem)
+    
+    title_dictionary = {
+        "business-drivers": "业务驱动力与商业目标 (Business Drivers)",
+        "non-functional-requirements": "质量属性与 NFR 矩阵 (Non-Functional Requirements)",
+        "nfr-matrix": "质量属性与 NFR 矩阵 (Non-Functional Requirements)",
+        "functional-requirements": "核心功能需求与用例规约 (Functional Requirements)",
+        "architecture-requirements-checklist": "架构需求核对清单 ARC (Architecture Requirements Checklist)",
+        "constraints-and-assumptions": "硬约束、假设与不变量编目 (Constraints & Assumptions)",
+        "system-overview": "系统架构总览与控制原则 (System Overview)",
+        "architecture-overview-diagram": "5层架构全景概览图 (5-Layer AOD)",
+        "c4-context": "C4 Context 系统上下文边界图 (System Context)",
+        "component-model": "逻辑与物理组件模型 CM (Component Model)",
+        "c4-container-overview": "C4 Container 容器拓扑图 (Container Overview)",
+        "conceptual-data-model": "概念数据模型与统一语言词典 (CDM & Glossary)",
+        "domain-logical-model": "领域逻辑模型与实体关系图 (Domain Logical Model)",
+        "sequence-and-dataflow": "端到端交互时序与核心数据流 (Sequence & Data Flow)",
+        "interaction-sequence": "端到端核心交互时序图 (Interaction Sequence)",
+        "data-flow": "数据流向与生命周期状态机 (Data Flow Pipeline & FSM)",
+        "operational-model": "物理运行模型与节点规范 OM (Operational Model)",
+        "deployment-architecture": "部署拓扑与高可用基础设施 (Deployment Architecture)",
+        "data-architecture": "数据架构与冷热分级存储 (Data Architecture)",
+        "observability-design": "统一可观测性与告警指标 (Observability Design)",
+        "failure-resilience-matrix": "FMEA 故障模式与容灾矩阵 (Failure Resilience Matrix)",
+        "interface-contracts-overview": "系统边界强契约与接口规约概览 (Interface Contracts)",
+        "openapi": "OpenAPI 3.0 标准接口规范契约 (OpenAPI Spec)",
+        "adr-index": "架构决策记录全景索引 (ADR Index)",
+        "organization-structure": "康威定律对齐与逆康威组织阵型 (Organization Structure)",
+        "estimation-and-plan": "工作量科学估算与敏捷交付计划 (Estimation & Delivery Plan)",
+        "first-step-poc": "破冰验证切片与破坏性混沌实验 (First-Step PoC)",
+        "poc-charter-and-report": "破冰验证切片与破坏性混沌实验 (First-Step PoC)",
+        "walking-skeleton-spec": "Walking Skeleton 物理工程骨架生成规约 (Scaffold Spec)",
+        "agent-rules": "AI 与开发者执行纪律与安全围栏 (Engineering Guardrails)",
+    }
+
+    for k, v in title_dictionary.items():
+        if k in clean_name.lower():
+            return f"[{num_str}] {v}"
+
+    # 从文件首行标题提取
+    if file_path.suffix.lower() in (".md", ".markdown") and file_path.exists():
+        try:
+            lines = file_path.read_text(encoding="utf-8").splitlines()
+            for line in lines[:5]:
+                if line.startswith("# "):
+                    h1 = line.lstrip("# ").strip()
+                    return f"[{num_str}] {h1}"
+        except Exception:
+            pass
+
+    beautified = clean_name.replace("-", " ").replace("_", " ").title()
+    return f"[{num_str}] {beautified}"
+
+
+def get_layer_group(num_str: str) -> Tuple[int, str]:
+    """根据编号前缀确定所属架构层级."""
+    if num_str.startswith("01"):
+        return 1, "Layer 1 · 业务与需求定义 (Requirements & Constraints)"
+    if num_str.startswith("02"):
+        return 2, "Layer 2 · 概念与逻辑架构设计 (Architecture & Structural Design)"
+    if num_str.startswith("03"):
+        return 3, "Layer 3 · 物理工程权衡与边界强契约 (Engineering & Physics Decisions)"
+    if num_str.startswith("04"):
+        return 4, "Layer 4 · 交付实施、组织阵型与工程围栏 (Delivery & Scaffolding)"
+    return 5, "Layer 5 · 其他综合架构工件 (Supplementary Artifacts)"
+
+
+def collect_artifacts(ws: Path) -> List[Dict[str, Any]]:
+    """扫描工作区所有输出物，严格按编号排序解析."""
+    items: List[Dict[str, Any]] = []
+    seen_files = set()
+
+    for file_path in sorted(ws.rglob("*")):
+        if not file_path.is_file():
+            continue
+        if file_path.name.startswith(".") or "archive" in str(file_path):
+            continue
+        if file_path.suffix.lower() not in (".md", ".mmd", ".yaml", ".yml", ".json"):
+            continue
+        if file_path.name in (".state.json", "architecture_board.html"):
+            continue
+
+        rel_path = str(file_path.relative_to(ws))
+        num_str, sort_key = parse_artifact_number(file_path.name, rel_path)
+        layer_num, layer_title = get_layer_group(num_str)
+        title = extract_artifact_title(file_path, num_str)
+
+        raw_content = ""
+        try:
+            raw_content = file_path.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+        mermaid_code = extract_mermaid_code(file_path)
+        has_diagram = bool(mermaid_code.strip())
+        if has_diagram:
+            is_valid, err = validate_mermaid_syntax(mermaid_code)
+            if not is_valid:
+                print(f"⚠️ [Mermaid语法警告] {file_path.name}: {err}", file=sys.stderr)
+
+        # 确定展示标签
+        tag = "📄 文档"
+        if file_path.suffix.lower() == ".mmd" or (has_diagram and file_path.suffix.lower() == ".md" and len(raw_content.splitlines()) < 40):
+            tag = "📊 图表"
+        elif file_path.suffix.lower() in (".yaml", ".yml"):
+            tag = "⚡ 契约"
+        elif "adr-" in file_path.name.lower():
+            tag = "⚖️ 决策"
+        elif file_path.suffix.lower() == ".json":
+            tag = "🧩 规约"
+
+        items.append({
+            "num": num_str,
+            "sort_key": sort_key,
+            "layer_num": layer_num,
+            "layer_title": layer_title,
+            "title": title,
+            "filename": file_path.name,
+            "rel_path": rel_path,
+            "has_diagram": has_diagram,
+            "mermaid_code": mermaid_code,
+            "raw_content": raw_content,
+            "tag": tag,
+            "file_ext": file_path.suffix.lower(),
+        })
+        seen_files.add(file_path.resolve())
+
+    # 按编号排序键严格升序排列
+    items.sort(key=lambda x: (x["sort_key"], x["rel_path"]))
+    return items
+
 
 def build_interactive_html(
     project_name: str,
-    diagrams: List[Dict[str, str]],
+    artifacts: List[Dict[str, Any]],
     metadata: Optional[Dict[str, str]] = None,
 ) -> str:
-    """构建现代化自包含的 HTML 架构画板."""
+    """构建现代化、按编号严格展示的高颜值自包含 HTML 架构画板."""
     meta = metadata or {}
-    status_tag = meta.get("status", "VALIDATED")
+    status_tag = meta.get("status", "ACTIVE")
 
-    diagrams_json = json.dumps(diagrams, ensure_ascii=False)
+    artifacts_json = json.dumps(artifacts, ensure_ascii=False)
 
     html_template = f"""<!DOCTYPE html>
 <html lang="zh-CN" data-theme="dark">
@@ -80,28 +268,42 @@ def build_interactive_html(
   <title>{html.escape(project_name)} - 架构全景交互画板</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
   <style>
     :root {{
       --bg-primary: #0f172a;
       --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
       --bg-board: #0b0f19;
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
+      --text-muted: #64748b;
       --accent: #38bdf8;
       --accent-hover: #0ea5e9;
+      --accent-bg: rgba(56, 189, 248, 0.12);
       --border: #334155;
+      --border-light: #1e293b;
       --card-bg: #1e293b;
+      --badge-num: #0284c7;
+      --badge-num-text: #ffffff;
+      --sidebar-width: 330px;
     }}
     [data-theme="light"] {{
       --bg-primary: #f8fafc;
-      --bg-secondary: #f1f5f9;
-      --bg-board: #ffffff;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e2e8f0;
+      --bg-board: #f1f5f9;
       --text-primary: #0f172a;
-      --text-secondary: #64748b;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
       --accent: #0284c7;
       --accent-hover: #0369a1;
+      --accent-bg: rgba(2, 132, 199, 0.08);
       --border: #cbd5e1;
+      --border-light: #e2e8f0;
       --card-bg: #ffffff;
+      --badge-num: #0284c7;
+      --badge-num-text: #ffffff;
     }}
     * {{
       box-sizing: border-box;
@@ -109,7 +311,7 @@ def build_interactive_html(
       padding: 0;
     }}
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
       background-color: var(--bg-primary);
       color: var(--text-primary);
       height: 100vh;
@@ -127,6 +329,7 @@ def build_interactive_html(
       justify-content: space-between;
       padding: 0 20px;
       flex-shrink: 0;
+      z-index: 20;
     }}
     .brand {{
       display: flex;
@@ -135,10 +338,16 @@ def build_interactive_html(
       font-size: 16px;
       font-weight: 600;
     }}
+    .brand span.title {{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 420px;
+    }}
     .badge {{
       font-size: 11px;
       font-weight: 700;
-      padding: 2px 8px;
+      padding: 3px 8px;
       border-radius: 9999px;
       background-color: #10b981;
       color: #ffffff;
@@ -148,7 +357,7 @@ def build_interactive_html(
     .controls {{
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }}
     button, .btn {{
       padding: 6px 12px;
@@ -176,45 +385,165 @@ def build_interactive_html(
     .btn-primary:hover {{
       background-color: var(--accent-hover);
     }}
-    nav.tabs {{
+    .app-container {{
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }}
+    /* 左侧边栏 */
+    aside.sidebar {{
+      width: var(--sidebar-width);
+      background-color: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      transition: width 0.2s;
+    }}
+    .sidebar-header {{
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }}
+    .sidebar-header .title-row {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }}
+    .search-box {{
+      width: 100%;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 12px;
+      outline: none;
+    }}
+    .search-box:focus {{
+      border-color: var(--accent);
+    }}
+    .sidebar-list {{
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }}
+    .layer-group-title {{
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      padding: 10px 8px 4px 8px;
+    }}
+    .item-card {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }}
+    .item-card:hover {{
+      background-color: var(--accent-bg);
+      border-color: var(--border);
+    }}
+    .item-card.active {{
+      background-color: var(--accent-bg);
+      border-color: var(--accent);
+      font-weight: 600;
+    }}
+    .num-badge {{
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background-color: var(--badge-num);
+      color: var(--badge-num-text);
+      flex-shrink: 0;
+    }}
+    .item-info {{
+      flex: 1;
+      overflow: hidden;
+    }}
+    .item-name {{
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+    }}
+    .item-tag {{
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }}
+    /* 右侧主视口 */
+    main.content-area {{
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-board);
+      overflow: hidden;
+      position: relative;
+    }}
+    .content-toolbar {{
       height: 44px;
       background-color: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
+      justify-content: space-between;
       padding: 0 16px;
-      gap: 8px;
-      overflow-x: auto;
       flex-shrink: 0;
     }}
-    .tab {{
-      padding: 6px 14px;
-      font-size: 13px;
-      border-radius: 6px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      white-space: nowrap;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }}
-    .tab:hover {{
-      color: var(--text-primary);
-      background-color: rgba(255, 255, 255, 0.05);
-    }}
-    .tab.active {{
-      color: var(--accent);
-      background-color: var(--bg-primary);
-      border-color: var(--border);
-      font-weight: 600;
-    }}
-    main {{
-      flex: 1;
-      position: relative;
-      background-color: var(--bg-board);
-      overflow: hidden;
+    .curr-meta {{
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      overflow: hidden;
+    }}
+    .view-modes {{
+      display: flex;
+      align-items: center;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }}
+    .mode-btn {{
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }}
+    .mode-btn.active {{
+      background-color: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+    }}
+    .viewport-body {{
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
     }}
     #viewer-container {{
       width: 100%;
@@ -234,9 +563,58 @@ def build_interactive_html(
       align-items: center;
       justify-content: center;
     }}
+    #doc-container {{
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 32px 48px;
+      background-color: var(--bg-primary);
+      display: none;
+    }}
+    .markdown-body {{
+      max-width: 960px;
+      margin: 0 auto;
+      line-height: 1.7;
+      color: var(--text-primary);
+    }}
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {{
+      margin-top: 24px;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }}
+    .markdown-body p, .markdown-body ul, .markdown-body ol {{
+      margin-bottom: 16px;
+    }}
+    .markdown-body table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }}
+    .markdown-body th, .markdown-body td {{
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+    }}
+    .markdown-body th {{
+      background-color: var(--bg-secondary);
+    }}
+    .markdown-body pre {{
+      background-color: var(--bg-secondary);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }}
+    .markdown-body code {{
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }}
     .zoom-toolbar {{
       position: absolute;
-      bottom: 24px;
+      bottom: 64px;
       right: 24px;
       display: flex;
       flex-direction: column;
@@ -245,7 +623,7 @@ def build_interactive_html(
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       z-index: 10;
     }}
     .zoom-toolbar button {{
@@ -255,44 +633,99 @@ def build_interactive_html(
       justify-content: center;
       border: none;
       background: transparent;
+      font-size: 16px;
+    }}
+    footer.bottom-bar {{
+      height: 40px;
+      background-color: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }}
+    .nav-buttons {{
+      display: flex;
+      gap: 8px;
     }}
     .empty-state {{
       text-align: center;
       color: var(--text-secondary);
-      padding: 40px;
+      padding: 60px;
     }}
   </style>
 </head>
 <body>
   <header>
     <div class="brand">
-      <span>📐 {html.escape(project_name)}</span>
+      <span style="font-size: 20px;">📐</span>
+      <span class="title">{html.escape(project_name)}</span>
       <span class="badge">{html.escape(status_tag)}</span>
-      <span style="font-size: 12px; color: var(--text-secondary); font-weight: normal;">Archify-Style Interactive Board</span>
+      <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">按编号顺序全景交互看板</span>
     </div>
     <div class="controls">
       <button id="theme-toggle" title="切换浅色/深色主题">🌓 主题</button>
-      <button id="export-svg" class="btn" title="导出当前视图为高清矢量 SVG">📥 导出 SVG</button>
-      <button id="reset-view" class="btn btn-primary" title="重置视角到居中">🎯 重置视角</button>
+      <button id="export-svg" class="btn" title="导出当前视图为矢量 SVG">📥 导出 SVG</button>
+      <button id="reset-view" class="btn btn-primary" title="重置视角居中自适应">🎯 重置视角</button>
     </div>
   </header>
 
-  <nav class="tabs" id="tab-nav"></nav>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="title-row">
+          <span>📑 架构输出物清单 (按编号递增)</span>
+          <span id="artifact-count" style="font-weight: normal; font-size: 11px;">共 {len(artifacts)} 项</span>
+        </div>
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜索编号或名称 (如 01-01, AOD, OM)...">
+      </div>
+      <div class="sidebar-list" id="sidebar-list"></div>
+    </aside>
 
-  <main>
-    <div id="viewer-container">
-      <div id="graph-target" class="mermaid-render"></div>
-    </div>
-    <div class="zoom-toolbar">
-      <button id="zoom-in" title="放大">+</button>
-      <button id="zoom-out" title="缩小">−</button>
-      <button id="zoom-reset" title="适应画布">⟲</button>
-    </div>
-  </main>
+    <main class="content-area">
+      <div class="content-toolbar">
+        <div class="curr-meta" id="curr-meta">
+          <span class="num-badge" id="curr-num">--</span>
+          <span id="curr-title">载入中...</span>
+        </div>
+        <div class="view-modes" id="view-mode-controls">
+          <button class="mode-btn active" id="btn-mode-diagram">📊 架构图拓扑</button>
+          <button class="mode-btn" id="btn-mode-doc">📄 详细设计规约</button>
+        </div>
+      </div>
+
+      <div class="viewport-body">
+        <div id="viewer-container">
+          <div id="graph-target" class="mermaid-render"></div>
+        </div>
+        <div id="doc-container">
+          <div class="markdown-body" id="doc-target"></div>
+        </div>
+
+        <div class="zoom-toolbar" id="zoom-toolbar">
+          <button id="zoom-in" title="放大">+</button>
+          <button id="zoom-out" title="缩小">−</button>
+          <button id="zoom-reset" title="适应画布">⟲</button>
+        </div>
+      </div>
+
+      <footer class="bottom-bar">
+        <div id="curr-path">文件路径: --</div>
+        <div class="nav-buttons">
+          <button id="btn-prev" title="按编号切换至上一个 (快捷键: 左方向键)">⏮ 上一个输出物</button>
+          <button id="btn-next" title="按编号切换至下一个 (快捷键: 右方向键)">⏭ 下一个输出物</button>
+        </div>
+      </footer>
+    </main>
+  </div>
 
   <script>
-    const diagrams = {diagrams_json};
-    let currentIdx = 0;
+    const artifacts = {artifacts_json};
+    let currentIndex = 0;
+    let currentMode = "diagram"; // "diagram" | "doc"
     let panZoomInstance = null;
     let currentTheme = localStorage.getItem("archify_theme") || "dark";
 
@@ -310,7 +743,7 @@ def build_interactive_html(
           background: "#0b0f19",
           primaryColor: "#1e3a8a",
           primaryTextColor: "#f8fafc",
-          primaryBorderColor: "#3b82f6",
+          primaryBorderColor: "#38bdf8",
           lineColor: "#64748b",
           secondaryColor: "#1e293b",
           tertiaryColor: "#0f172a"
@@ -319,19 +752,123 @@ def build_interactive_html(
           background: "#ffffff",
           primaryColor: "#eff6ff",
           primaryTextColor: "#0f172a",
-          primaryBorderColor: "#2563eb",
+          primaryBorderColor: "#0284c7",
           lineColor: "#475569"
         }}
       }});
     }}
 
-    function renderDiagram(index) {{
-      currentIdx = index;
-      const nav = document.getElementById("tab-nav");
-      Array.from(nav.children).forEach((el, i) => {{
-        el.className = "tab " + (i === index ? "active" : "");
+    function buildSidebar(filterText = "") {{
+      const listEl = document.getElementById("sidebar-list");
+      listEl.innerHTML = "";
+
+      let currentLayer = null;
+
+      artifacts.forEach((item, idx) => {{
+        const searchMatch = !filterText ||
+          item.num.toLowerCase().includes(filterText.toLowerCase()) ||
+          item.title.toLowerCase().includes(filterText.toLowerCase()) ||
+          item.rel_path.toLowerCase().includes(filterText.toLowerCase());
+
+        if (!searchMatch) return;
+
+        // 分组标题
+        if (item.layer_title !== currentLayer) {{
+          currentLayer = item.layer_title;
+          const groupTitle = document.createElement("div");
+          groupTitle.className = "layer-group-title";
+          groupTitle.textContent = currentLayer;
+          listEl.appendChild(groupTitle);
+        }}
+
+        const card = document.createElement("div");
+        card.className = "item-card " + (idx === currentIndex ? "active" : "");
+        card.dataset.index = idx;
+        card.innerHTML = `
+          <span class="num-badge">${{item.num}}</span>
+          <div class="item-info">
+            <div class="item-name" title="${{item.title}}">${{item.title.replace(/\\[.*?\\]\\s*/, "")}}</div>
+            <div class="item-tag">${{item.tag}} · ${{item.filename}}</div>
+          </div>
+        `;
+        card.onclick = () => selectItem(idx);
+        listEl.appendChild(card);
+      }});
+    }}
+
+    function selectItem(index) {{
+      if (index < 0 || index >= artifacts.length) return;
+      currentIndex = index;
+      const item = artifacts[index];
+
+      // 更新侧边栏高亮
+      document.querySelectorAll(".item-card").forEach(el => {{
+        el.classList.toggle("active", parseInt(el.dataset.index) === index);
       }});
 
+      // 更新顶部与底栏元数据
+      document.getElementById("curr-num").textContent = item.num;
+      document.getElementById("curr-title").textContent = item.title;
+      document.getElementById("curr-path").textContent = `文件路径: ${{item.rel_path}} (第 ${{index + 1}} / ${{artifacts.length}} 项)`;
+
+      // 如果当前项没有图表，则自动切换到文档视图
+      if (!item.has_diagram) {{
+        setMode("doc", false);
+        document.getElementById("btn-mode-diagram").disabled = true;
+        document.getElementById("btn-mode-diagram").style.opacity = "0.4";
+      }} else {{
+        document.getElementById("btn-mode-diagram").disabled = false;
+        document.getElementById("btn-mode-diagram").style.opacity = "1";
+        if (currentMode === "diagram") {{
+          renderDiagramView(item);
+        }} else {{
+          renderDocView(item);
+        }}
+      }}
+
+      if (currentMode === "doc") {{
+        renderDocView(item);
+      }} else if (item.has_diagram) {{
+        renderDiagramView(item);
+      }}
+    }}
+
+    function setMode(mode, triggerRender = true) {{
+      currentMode = mode;
+      document.getElementById("btn-mode-diagram").classList.toggle("active", mode === "diagram");
+      document.getElementById("btn-mode-doc").classList.toggle("active", mode === "doc");
+
+      const viewContainer = document.getElementById("viewer-container");
+      const docContainer = document.getElementById("doc-container");
+      const zoomBar = document.getElementById("zoom-toolbar");
+
+      if (mode === "diagram") {{
+        viewContainer.style.display = "flex";
+        docContainer.style.display = "none";
+        zoomBar.style.display = "flex";
+        if (triggerRender) renderDiagramView(artifacts[currentIndex]);
+      }} else {{
+        viewContainer.style.display = "none";
+        docContainer.style.display = "block";
+        zoomBar.style.display = "none";
+        if (triggerRender) renderDocView(artifacts[currentIndex]);
+      }}
+    }}
+
+    function renderDocView(item) {{
+      const target = document.getElementById("doc-target");
+      if (!item.raw_content) {{
+        target.innerHTML = "<div class='empty-state'>该文件暂无文本内容</div>";
+        return;
+      }}
+      if (typeof marked !== "undefined") {{
+        target.innerHTML = marked.parse(item.raw_content);
+      }} else {{
+        target.innerHTML = `<pre>${{item.raw_content}}</pre>`;
+      }}
+    }}
+
+    function renderDiagramView(item) {{
       const target = document.getElementById("graph-target");
       if (panZoomInstance) {{
         panZoomInstance.destroy();
@@ -339,71 +876,58 @@ def build_interactive_html(
       }}
       target.innerHTML = "";
 
-      if (!diagrams || diagrams.length === 0) {{
-        target.innerHTML = '<div class="empty-state">当前工作区暂无可渲染的架构图表。请先运行状态机生成 02-models/ 下的图元资产。</div>';
+      if (!item || !item.has_diagram) {{
+        target.innerHTML = '<div class="empty-state">该输出物未包含 Mermaid 架构图。点击右上角“详细设计规约”查看文档内容。</div>';
         return;
       }}
 
-      const item = diagrams[index];
-      const code = item.code.trim();
+      const code = item.mermaid_code.trim();
       const uniqueId = "render_" + Math.random().toString(36).substr(2, 9);
 
-      if (typeof mermaid === "undefined") {{
-        const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        target.innerHTML = `
-          <div class="empty-state" style="max-width: 680px; text-align: left; background: var(--card-bg); padding: 24px; border-radius: 8px; border: 1px solid var(--border);">
-            <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
-              ⚠️ 当前处于离线/物理隔离专网环境 (Mermaid 脚本未就绪)
-            </div>
-            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
-              检测到外部 CDN (<a href="https://cdn.jsdelivr.net" target="_blank" style="color: var(--accent);">cdn.jsdelivr.net</a>) 无法连通。
-              图表数据完整无损，您可以在本地内网搭建静态代理，或在下方直接查阅该图的确定性 Mermaid 架构源码：
-            </div>
-            <pre style="background: var(--bg-board); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; overflow-x: auto; color: var(--text-primary); border: 1px solid var(--border);">${{escapedCode}}</pre>
-          </div>
-        `;
-        return;
+      try {{
+        mermaid.render(uniqueId, code).then(result => {{
+          target.innerHTML = result.svg;
+          const svgEl = target.querySelector("svg");
+          if (svgEl) {{
+            svgEl.style.width = "100%";
+            svgEl.style.height = "100%";
+            svgEl.style.maxWidth = "100%";
+            svgEl.style.maxHeight = "100%";
+            if (typeof svgPanZoom !== "undefined") {{
+              panZoomInstance = svgPanZoom(svgEl, {{
+                zoomEnabled: true,
+                controlIconsEnabled: false,
+                fit: true,
+                center: true,
+                minZoom: 0.2,
+                maxZoom: 15,
+              }});
+            }}
+          }}
+        }}).catch(err => {{
+          target.innerHTML = `<div class="empty-state" style="color: #ef4444;">
+            <h3>Mermaid 图表渲染异常</h3>
+            <p style="margin-top: 8px; font-family: monospace; font-size: 12px;">${{err.message || err}}</p>
+            <pre style="text-align: left; margin-top: 16px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; font-size: 11px;">${{code}}</pre>
+          </div>`;
+        }});
+      }} catch (err) {{
+        target.innerHTML = `<div class="empty-state" style="color: #ef4444;">渲染调用失败: ${{err}}</div>`;
       }}
-
-      mermaid.render(uniqueId, code).then(({{ svg }}) => {{
-        target.innerHTML = svg;
-        const svgElement = target.querySelector("svg");
-        if (svgElement) {{
-          svgElement.style.width = "100%";
-          svgElement.style.height = "100%";
-          panZoomInstance = svgPanZoom(svgElement, {{
-            zoomEnabled: true,
-            controlIconsEnabled: false,
-            fit: true,
-            center: true,
-            minZoom: 0.2,
-            maxZoom: 10
-          }});
-        }}
-      }}).catch(err => {{
-        target.innerHTML = '<div class="empty-state" style="color:#ef4444;">图表渲染语法异常:<br><pre>' + err.message + '</pre></div>';
-      }});
     }}
 
-    // 初始化导航 Tab
-    const tabNav = document.getElementById("tab-nav");
-    diagrams.forEach((d, i) => {{
-      const tab = document.createElement("div");
-      tab.className = "tab " + (i === 0 ? "active" : "");
-      tab.textContent = d.title;
-      tab.onclick = () => renderDiagram(i);
-      tabNav.appendChild(tab);
-    }});
-
-    // 控制按钮逻辑
+    // 主题切换
     document.getElementById("theme-toggle").onclick = () => {{
       currentTheme = currentTheme === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", currentTheme);
       localStorage.setItem("archify_theme", currentTheme);
       initMermaid(currentTheme);
-      renderDiagram(currentIdx);
+      if (currentMode === "diagram") {{
+        renderDiagramView(artifacts[currentIndex]);
+      }}
     }};
 
+    // 缩放操作
     document.getElementById("zoom-in").onclick = () => panZoomInstance && panZoomInstance.zoomIn();
     document.getElementById("zoom-out").onclick = () => panZoomInstance && panZoomInstance.zoomOut();
     document.getElementById("zoom-reset").onclick = () => {{
@@ -421,24 +945,60 @@ def build_interactive_html(
       }}
     }};
 
+    // 导出当前 SVG
     document.getElementById("export-svg").onclick = () => {{
       const svgEl = document.querySelector("#graph-target svg");
-      if (!svgEl) return;
+      if (!svgEl) {{
+        alert("当前视图未展示架构图或未生成 SVG");
+        return;
+      }}
       const serializer = new XMLSerializer();
       const source = serializer.serializeToString(svgEl);
       const blob = new Blob([source], {{ type: "image/svg+xml;charset=utf-8" }});
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = (diagrams[currentIdx]?.title || "architecture-diagram") + ".svg";
+      a.download = (artifacts[currentIndex]?.num || "diagram") + "-" + (artifacts[currentIndex]?.filename || "architecture") + ".svg";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     }};
 
-    // 启动首次渲染
+    // 模式切换
+    document.getElementById("btn-mode-diagram").onclick = () => setMode("diagram");
+    document.getElementById("btn-mode-doc").onclick = () => setMode("doc");
+
+    // 快速翻页 (前后切换)
+    document.getElementById("btn-prev").onclick = () => {{
+      if (currentIndex > 0) selectItem(currentIndex - 1);
+    }};
+    document.getElementById("btn-next").onclick = () => {{
+      if (currentIndex < artifacts.length - 1) selectItem(currentIndex + 1);
+    }};
+
+    // 键盘左右快捷键
+    window.addEventListener("keydown", (e) => {{
+      if (e.target.tagName === "INPUT") return;
+      if (e.key === "ArrowLeft") {{
+        if (currentIndex > 0) selectItem(currentIndex - 1);
+      }} else if (e.key === "ArrowRight") {{
+        if (currentIndex < artifacts.length - 1) selectItem(currentIndex + 1);
+      }}
+    }});
+
+    // 搜索过滤
+    document.getElementById("search-input").addEventListener("input", (e) => {{
+      buildSidebar(e.target.value.trim());
+    }});
+
+    // 启动初始渲染
     initMermaid(currentTheme);
-    renderDiagram(0);
+    buildSidebar();
+    if (artifacts.length > 0) {{
+      // 优先选中第一个有图的项或第 0 项
+      const firstDiagramIdx = artifacts.findIndex(a => a.has_diagram);
+      selectItem(firstDiagramIdx >= 0 ? firstDiagramIdx : 0);
+    }}
   </script>
 </body>
 </html>
@@ -451,7 +1011,7 @@ def render_board(
     output_path: Optional[Path | str] = None,
     project_name: str = "Architecture Lifecycle Canvas",
 ) -> Path:
-    """搜集工作区下的模型图表并渲染为自包含 HTML 画板.
+    """搜集工作区下的全部编号输出物工件并渲染为自包含 HTML 画板.
 
     Args:
         workspace_root: 架构资产根目录 (通常为 docs/architecture)
@@ -462,101 +1022,28 @@ def render_board(
         Path: 生成的 HTML 绝对路径
     """
     ws = Path(workspace_root).resolve()
-    models_dir = ws / "02-models"
-    if not models_dir.exists() and (ws / "02-architecture-design").exists():
-        models_dir = ws / "02-architecture-design"
-    models_dir.mkdir(parents=True, exist_ok=True)
+    artifacts = collect_artifacts(ws)
 
-    decisions_dir = ws / "03-decisions"
-    eng_dir = ws / "03-engineering-and-physics"
-
-    def find_first_existing(paths: List[Path]) -> Optional[Path]:
-        for p in paths:
-            if p.exists():
-                return p
-        return None
-
-    # Architecture Thinking 核心 7 维图谱标准 (兼容 C4 标签与深度设计规范)
-    diagram_candidates: List[Tuple[str, List[Path]]] = [
-        ("🌐 System Context (系统上下文边界图 / C4 Context)", [
-            models_dir / "system-context.md",
-            models_dir / "c4-context.mmd",
-            models_dir / "system-context-diagram.md",
-        ]),
-        ("📐 AOD (架构全景概览图 / 5-Layer AOD)", [
-            models_dir / "architecture-overview-diagram.md",
-            models_dir / "aod.mmd",
-            models_dir / "c4-context.mmd",
-        ]),
-        ("⚙️ CM (组件结构模型图 / C4 Container)", [
-            models_dir / "component-model.md",
-            models_dir / "component-model.mmd",
-            models_dir / "c4-container-overview.mmd",
-        ]),
-        ("⏱️ Interaction Sequence (端到端交互时序图)", [
-            models_dir / "sequence-and-dataflow.md",
-            models_dir / "interaction-sequence.mmd",
-        ]),
-        ("🧩 CDM & ER (概念数据模型与领域实体关系)", [
-            models_dir / "conceptual-data-model.md",
-            models_dir / "domain-model.mmd",
-            models_dir / "domain-logical-model.md",
-            models_dir / "logical-model.mmd",
-        ]),
-        ("🏗️ OM (物理运行模型与部署拓扑 / Deployment)", [
-            decisions_dir / "operational-model.md",
-            eng_dir / "operational-model.md",
-            eng_dir / "deployment-model.mmd",
-            eng_dir / "deployment-architecture.md",
-        ]),
-        ("🌊 Data Flow Pipeline & FSM (数据流向与生命周期状态机)", [
-            models_dir / "lifecycle-fsm.mmd",
-            models_dir / "data-flow.mmd",
-            models_dir / "domain-logical-model.md",
-            decisions_dir / "failure-resilience-matrix.md",
-        ]),
-    ]
-
-    diagrams: List[Dict[str, str]] = []
-    seen_files = set()
-    for title, candidates in diagram_candidates:
-        match_file = find_first_existing(candidates)
-        if match_file:
-            code = extract_mermaid_code(match_file)
-            if code:
-                is_valid, err_msg = validate_mermaid_syntax(code)
-                if not is_valid:
-                    print(f"⚠️ [Mermaid语法警告] {match_file.name} 存在语法隐患: {err_msg}", file=sys.stderr)
-                diagrams.append({"title": title, "code": code, "file": match_file.name})
-                seen_files.add(match_file.resolve())
-
-    # 动态扫描补充：自动搜集工作区中其他包含合法 Mermaid 的工件
-    for md_file in sorted(ws.rglob("*.md")) + sorted(ws.rglob("*.mmd")):
-        if md_file.resolve() in seen_files or md_file.name.startswith((".", "_")) or "archive" in str(md_file):
-            continue
-        code = extract_mermaid_code(md_file)
-        if code:
-            is_valid, _ = validate_mermaid_syntax(code)
-            if is_valid:
-                doc_title = md_file.stem.replace("-", " ").replace("_", " ").title()
-                diagrams.append({
-                    "title": f"📊 {doc_title}",
-                    "code": code,
-                    "file": md_file.name
-                })
-                seen_files.add(md_file.resolve())
-
-    # 若未找到任何图，读取 sample 默认图保证展示
-    if not diagrams:
-        diagrams.append({
-            "title": "⚙️ 待生成架构拓扑",
-            "code": "graph TD\n    A[启动架构状态机] --> B[调用 02_structural_modeling 技能]\n    B --> C[生成 5 维高保真模型]\n",
-            "file": "placeholder.mmd"
+    # 若未找到任何工件，放置默认引导项
+    if not artifacts:
+        artifacts.append({
+            "num": "00-01",
+            "sort_key": "00-01",
+            "layer_num": 1,
+            "layer_title": "Layer 1 · 架构生命周期准备",
+            "title": "[00-01] 待生成架构拓扑",
+            "filename": "placeholder.mmd",
+            "rel_path": "placeholder.mmd",
+            "has_diagram": True,
+            "mermaid_code": "graph TD\n    A[启动架构状态机] --> B[调用 02_structural_modeling 技能]\n    B --> C[生成 5 维高保真模型]\n",
+            "raw_content": "# 待生成架构资产\n\n请运行 `python run.py --status` 启动架构状态机推进生命周期。",
+            "tag": "📊 图表",
+            "file_ext": ".mmd",
         })
 
     html_content = build_interactive_html(
         project_name=project_name,
-        diagrams=diagrams,
+        artifacts=artifacts,
         metadata={"status": "ACTIVE"},
     )
 
@@ -572,4 +1059,3 @@ if __name__ == "__main__":
     proj_name = sys.argv[2] if len(sys.argv) > 2 else Path(target_ws).resolve().parent.parent.name
     generated_path = render_board(target_ws, project_name=proj_name)
     print(f"Architecture board generated at: {generated_path}")
-

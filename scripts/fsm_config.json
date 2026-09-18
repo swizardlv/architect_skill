@@ -22,8 +22,8 @@
       ],
       "exit_gate": {
         "required_artifacts": [
-          "01-requirements/business-drivers.md",
-          "01-requirements/functional-requirements.md"
+          "01-requirements/01-01-business-drivers.md",
+          "01-requirements/01-02-functional-requirements.md"
         ],
         "hitl_required": true,
         "review_prompt": "请确认 Layer 1 业务驱动力、投资回报率与核心功能用例规约是否准确？确认后推进至非功能需求与约束编目阶段。"
@@ -36,14 +36,13 @@
     "GROUNDING": {
       "description": "Layer 1 非功能需求与硬约束矩阵：确立量化 NFRs (性能/可用性/安全)、ARC 质量保障清单与不可违背的硬性红线编目",
       "skills": [
-        "skills/01_grounding/distill_nfr_matrix.md",
-        "skills/01_grounding/catalog_invariants_and_constraints.md"
+        "skills/architecture-grounding/SKILL.md"
       ],
       "exit_gate": {
         "required_artifacts": [
-          "01-requirements/non-functional-requirements.md",
-          "01-requirements/architecture-requirements-checklist.md",
-          "01-requirements/constraints-and-assumptions.md"
+          "01-requirements/01-03-non-functional-requirements.md",
+          "01-requirements/01-04-architecture-requirements-checklist.md",
+          "01-requirements/01-05-constraints-and-assumptions.md"
         ],
         "hitl_required": false
       },
@@ -54,20 +53,19 @@
     "MODELING": {
       "description": "Layer 2 概念与逻辑架构设计：输出 AOD 全景概览图、Component Model (CM) 逻辑组件模型、领域模型、C4 Context 与 C4 Container 拓扑",
       "skills": [
-        "skills/02_structural_modeling/architecture_diagramming_principles.md",
-        "skills/02_structural_modeling/generate_system_context.md",
-        "skills/02_structural_modeling/derive_logical_domain_model.md",
-        "skills/02_structural_modeling/synthesize_architecture_overview.md",
-        "skills/02_structural_modeling/generate_sequence_and_dataflow.md"
+        "skills/architecture-overview/SKILL.md",
+        "skills/component-modeling/SKILL.md",
+        "skills/conceptual-data-modeling/SKILL.md"
       ],
       "exit_gate": {
         "required_artifacts": [
-          "02-architecture-design/system-overview.md",
-          "02-architecture-design/architecture-overview-diagram.md",
-          "02-architecture-design/component-model.md",
-          "02-architecture-design/domain-logical-model.md",
-          "02-architecture-design/c4-context.mmd",
-          "02-architecture-design/c4-container-overview.mmd"
+          "02-architecture-design/02-01-system-overview.md",
+          "02-architecture-design/02-02-architecture-overview-diagram.md",
+          "02-architecture-design/02-03-c4-context.mmd",
+          "02-architecture-design/02-04-component-model.md",
+          "02-architecture-design/02-05-c4-container-overview.mmd",
+          "02-architecture-design/02-06-domain-logical-model.md",
+          "02-architecture-design/02-07-sequence-and-dataflow.md"
         ],
         "hitl_required": false
       },
@@ -78,20 +76,20 @@
     "CONTRACTS": {
       "description": "Layer 3 物理与工程权衡及边界强契约：输出 Operational Model (OM) 运行部署模型、数据架构、可观测性设计、FMEA 容灾矩阵、ADR 决策与 OpenAPI 接口规约",
       "skills": [
-        "skills/03_contracts_and_decisions/record_architecture_decision.md",
-        "skills/03_contracts_and_decisions/scaffold_boundary_contracts.md",
-        "skills/03_contracts_and_decisions/generate_failure_resilience_matrix.md"
+        "skills/operational-modeling/SKILL.md",
+        "skills/boundary-contracts/SKILL.md",
+        "skills/architecture-decisions/SKILL.md"
       ],
       "exit_gate": {
         "required_artifacts": [
-          "03-engineering-and-physics/operational-model.md",
-          "03-engineering-and-physics/deployment-architecture.md",
-          "03-engineering-and-physics/data-architecture.md",
-          "03-engineering-and-physics/observability-design.md",
-          "03-engineering-and-physics/failure-resilience-matrix.md",
-          "03-engineering-and-physics/adrs/adr-index.md",
-          "03-engineering-and-physics/contracts/openapi.yaml",
-          "03-engineering-and-physics/contracts/interface-contracts-overview.md"
+          "03-engineering-and-physics/03-01-operational-model.md",
+          "03-engineering-and-physics/03-02-deployment-architecture.md",
+          "03-engineering-and-physics/03-03-data-architecture.md",
+          "03-engineering-and-physics/03-04-observability-design.md",
+          "03-engineering-and-physics/03-05-failure-resilience-matrix.md",
+          "03-engineering-and-physics/03-06-interface-contracts-overview.md",
+          "03-engineering-and-physics/03-07-openapi.yaml",
+          "03-engineering-and-physics/03-08-adrs/adr-index.md"
         ],
         "hitl_required": true,
         "review_prompt": "请严审 Layer 3 Operational Model 运行拓扑、数据存储方案、可观测性指标、ADR 与接口契约。签署后推进至组织与实施交付阶段。"
@@ -104,16 +102,15 @@
     "SCAFFOLDING": {
       "description": "Layer 4 组织与交付实施：输出康威定律组织架构、工作量估算矩阵、敏捷工作计划、破冰骨架与 .agent-rules.md 围栏",
       "skills": [
-        "skills/04_execution_and_scaffolding/bootstrap_walking_skeleton.md",
-        "skills/04_execution_and_scaffolding/sequence_delivery_milestones.md"
+        "skills/architecture-execution/SKILL.md"
       ],
       "exit_gate": {
         "required_artifacts": [
-          ".agent-rules.md",
-          "04-delivery-and-organization/organization-structure.md",
-          "04-delivery-and-organization/estimation-and-plan.md",
-          "04-delivery-and-organization/first-step-poc.md",
-          "04-delivery-and-organization/walking-skeleton-spec.json"
+          "04-delivery-and-organization/04-01-organization-structure.md",
+          "04-delivery-and-organization/04-02-estimation-and-plan.md",
+          "04-delivery-and-organization/04-03-first-step-poc.md",
+          "04-delivery-and-organization/04-04-walking-skeleton-spec.json",
+          "04-delivery-and-organization/04-05-agent-rules.md"
         ],
         "hitl_required": false
       },

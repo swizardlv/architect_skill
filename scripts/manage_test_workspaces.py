@@ -21,12 +21,11 @@ def clean_legacy_directories(case_dir: Path) -> None:
         return
     legacy_dirs = [
         "00-grounding",
-        "00-state",
+        "01-grounding",
+        "02-models",
+        "03-decisions",
         "04-contracts",
-        "01-requirements",
-        "02-architecture-design",
-        "03-engineering-and-physics",
-        "04-delivery-and-organization",
+        "04-execution",
     ]
     for leg in legacy_dirs:
         leg_path = arch_root / leg

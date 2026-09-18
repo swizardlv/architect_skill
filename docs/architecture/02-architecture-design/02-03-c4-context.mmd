@@ -1,0 +1,10 @@
+graph TB
+    classDef personStyle fill:#f0fdfa,stroke:#0d9488,stroke-width:2px,color:#134e4a;
+    classDef coreStyle fill:#eff6ff,stroke:#2563eb,stroke-width:3px,color:#1e3a8a;
+    subgraph Users ["参与角色"]
+        dev["👤 研发工程师"]:::personStyle
+    end
+    subgraph Boundary ["目标系统"]
+        core["⚙️ 架构生命周期控制引擎"]:::coreStyle
+    end
+    dev --> core

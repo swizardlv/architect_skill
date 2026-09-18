@@ -82,47 +82,47 @@ def test_gatekeeper_blocks_invalid_json(temp_workspace: Path) -> None:
     # 在 GRILLING 阶段准备正常资产
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
-    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
+    (req_dir / "01-01-business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "01-02-functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
 
     fsm.advance(hitl_approved=True)  # 进入 GROUNDING
-    (req_dir / "non-functional-requirements.md").write_text("# NFR", encoding="utf-8")
-    (req_dir / "architecture-requirements-checklist.md").write_text("# ARC\n| ARC-01 | 质量属性类别 | 量化设计指标 |", encoding="utf-8")
-    (req_dir / "constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
+    (req_dir / "01-03-non-functional-requirements.md").write_text("# NFR", encoding="utf-8")
+    (req_dir / "01-04-architecture-requirements-checklist.md").write_text("# ARC\n| ARC-01 | 质量属性类别 | 量化设计指标 |", encoding="utf-8")
+    (req_dir / "01-05-constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
 
     fsm.advance()  # 进入 MODELING
     arch_dir = temp_workspace / "02-architecture-design"
     arch_dir.mkdir(parents=True, exist_ok=True)
-    (arch_dir / "system-overview.md").write_text("# Overview", encoding="utf-8")
-    (arch_dir / "architecture-overview-diagram.md").write_text("# AOD", encoding="utf-8")
-    (arch_dir / "component-model.md").write_text("# CM", encoding="utf-8")
-    (arch_dir / "domain-logical-model.md").write_text("# Domain", encoding="utf-8")
-    (arch_dir / "c4-context.mmd").write_text("graph TD\nA --> B", encoding="utf-8")
-    (arch_dir / "c4-container-overview.mmd").write_text("graph TD\nC --> D", encoding="utf-8")
+    (arch_dir / "02-01-system-overview.md").write_text("# Overview", encoding="utf-8")
+    (arch_dir / "02-02-architecture-overview-diagram.md").write_text("# AOD", encoding="utf-8")
+    (arch_dir / "02-03-c4-context.mmd").write_text("graph TD\nA --> B", encoding="utf-8")
+    (arch_dir / "02-04-component-model.md").write_text("# CM", encoding="utf-8")
+    (arch_dir / "02-05-c4-container-overview.mmd").write_text("graph TD\nC --> D", encoding="utf-8")
+    (arch_dir / "02-06-domain-logical-model.md").write_text("# Domain", encoding="utf-8")
+    (arch_dir / "02-07-sequence-and-dataflow.md").write_text("sequenceDiagram\nA->>B: hi", encoding="utf-8")
 
     fsm.advance()  # 进入 CONTRACTS
     eng_dir = temp_workspace / "03-engineering-and-physics"
-    (eng_dir / "adrs").mkdir(parents=True, exist_ok=True)
-    (eng_dir / "contracts").mkdir(parents=True, exist_ok=True)
-    (eng_dir / "operational-model.md").write_text("# OM", encoding="utf-8")
-    (eng_dir / "deployment-architecture.md").write_text("# Deploy", encoding="utf-8")
-    (eng_dir / "data-architecture.md").write_text("# Data", encoding="utf-8")
-    (eng_dir / "observability-design.md").write_text("# Obs", encoding="utf-8")
-    (eng_dir / "failure-resilience-matrix.md").write_text("# Resilience", encoding="utf-8")
-    (eng_dir / "adrs" / "adr-index.md").write_text("# ADR", encoding="utf-8")
-    (eng_dir / "contracts" / "openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
-    (eng_dir / "contracts" / "interface-contracts-overview.md").write_text("# Contracts", encoding="utf-8")
+    (eng_dir / "03-08-adrs").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "03-01-operational-model.md").write_text("# OM", encoding="utf-8")
+    (eng_dir / "03-02-deployment-architecture.md").write_text("# Deploy", encoding="utf-8")
+    (eng_dir / "03-03-data-architecture.md").write_text("# Data", encoding="utf-8")
+    (eng_dir / "03-04-observability-design.md").write_text("# Obs", encoding="utf-8")
+    (eng_dir / "03-05-failure-resilience-matrix.md").write_text("# Resilience", encoding="utf-8")
+    (eng_dir / "03-06-interface-contracts-overview.md").write_text("# Contracts", encoding="utf-8")
+    (eng_dir / "03-07-openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
+    (eng_dir / "03-08-adrs" / "adr-index.md").write_text("# ADR", encoding="utf-8")
 
     fsm.advance(hitl_approved=True)  # 进入 SCAFFOLDING
     scaff_dir = temp_workspace / "04-delivery-and-organization"
     scaff_dir.mkdir(parents=True, exist_ok=True)
-    (scaff_dir / "organization-structure.md").write_text("# Org", encoding="utf-8")
-    (scaff_dir / "estimation-and-plan.md").write_text("# Plan", encoding="utf-8")
-    (scaff_dir / "first-step-poc.md").write_text("# PoC", encoding="utf-8")
-    (temp_workspace / ".agent-rules.md").write_text("# Rules", encoding="utf-8")
+    (scaff_dir / "04-01-organization-structure.md").write_text("# Org", encoding="utf-8")
+    (scaff_dir / "04-02-estimation-and-plan.md").write_text("# Plan", encoding="utf-8")
+    (scaff_dir / "04-03-first-step-poc.md").write_text("# PoC", encoding="utf-8")
+    (scaff_dir / "04-05-agent-rules.md").write_text("# Rules", encoding="utf-8")
 
     # 写入损坏的 JSON
-    broken_json = scaff_dir / "walking-skeleton-spec.json"
+    broken_json = scaff_dir / "04-04-walking-skeleton-spec.json"
     broken_json.write_text("{ broken json: invalid }", encoding="utf-8")
 
     with pytest.raises(GatekeeperError) as exc_info:
@@ -139,8 +139,8 @@ def test_hitl_rejection_in_grilling(temp_workspace: Path) -> None:
     # 写入合法的 Layer 1 资产
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
-    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
+    (req_dir / "01-01-business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "01-02-functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
 
     # 人工审核被拒绝 (hitl_approved=False)
     with pytest.raises(ReviewRejectedError) as exc_info:
@@ -160,8 +160,8 @@ def test_state_persistence_and_resume(temp_workspace: Path) -> None:
     # 写入 Layer 1 资产并批准跃迁至 GROUNDING
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
-    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
+    (req_dir / "01-01-business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "01-02-functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 校验", encoding="utf-8")
 
     fsm1.advance(hitl_approved=True)
     assert fsm1.current_state == FSMState.GROUNDING
@@ -183,17 +183,17 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     # 准备 GRILLING 资产
     req_dir = temp_workspace / "01-requirements"
     req_dir.mkdir(parents=True, exist_ok=True)
-    (req_dir / "business-drivers.md").write_text("# Drivers", encoding="utf-8")
-    (req_dir / "functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 指令接入校验", encoding="utf-8")
+    (req_dir / "01-01-business-drivers.md").write_text("# Drivers", encoding="utf-8")
+    (req_dir / "01-02-functional-requirements.md").write_text("# Functional\n### 功能需求清单\n- FR-01: 指令接入校验", encoding="utf-8")
 
     # 2. GRILLING -> GROUNDING (HITL 批准)
     state, _ = fsm.advance(hitl_approved=True)
     assert state == FSMState.GROUNDING
 
     # 准备 GROUNDING 资产
-    (req_dir / "non-functional-requirements.md").write_text("# NFR Matrix\nSLA 99.999% P99 < 30ms", encoding="utf-8")
-    (req_dir / "architecture-requirements-checklist.md").write_text("# ARC\n| ARC-01 | 质量属性类别 | 量化设计指标 |", encoding="utf-8")
-    (req_dir / "constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
+    (req_dir / "01-03-non-functional-requirements.md").write_text("# NFR Matrix\nSLA 99.999% P99 < 30ms", encoding="utf-8")
+    (req_dir / "01-04-architecture-requirements-checklist.md").write_text("# ARC\n| ARC-01 | 质量属性类别 | 量化设计指标 |", encoding="utf-8")
+    (req_dir / "01-05-constraints-and-assumptions.md").write_text("# Constraints", encoding="utf-8")
 
     # 3. GROUNDING -> MODELING
     state, _ = fsm.advance()
@@ -202,12 +202,13 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     # 准备 MODELING 资产
     arch_dir = temp_workspace / "02-architecture-design"
     arch_dir.mkdir(parents=True, exist_ok=True)
-    (arch_dir / "system-overview.md").write_text("# System Overview", encoding="utf-8")
-    (arch_dir / "architecture-overview-diagram.md").write_text("# AOD Overview", encoding="utf-8")
-    (arch_dir / "component-model.md").write_text("# Component Model", encoding="utf-8")
-    (arch_dir / "domain-logical-model.md").write_text("# Domain Model", encoding="utf-8")
-    (arch_dir / "c4-context.mmd").write_text("graph TD\nA --> B", encoding="utf-8")
-    (arch_dir / "c4-container-overview.mmd").write_text("graph TD\nC --> D", encoding="utf-8")
+    (arch_dir / "02-01-system-overview.md").write_text("# System Overview", encoding="utf-8")
+    (arch_dir / "02-02-architecture-overview-diagram.md").write_text("# AOD Overview", encoding="utf-8")
+    (arch_dir / "02-03-c4-context.mmd").write_text("graph TD\nA --> B", encoding="utf-8")
+    (arch_dir / "02-04-component-model.md").write_text("# Component Model", encoding="utf-8")
+    (arch_dir / "02-05-c4-container-overview.mmd").write_text("graph TD\nC --> D", encoding="utf-8")
+    (arch_dir / "02-06-domain-logical-model.md").write_text("# Domain Model", encoding="utf-8")
+    (arch_dir / "02-07-sequence-and-dataflow.md").write_text("sequenceDiagram\nA->>B: hi", encoding="utf-8")
 
     # 4. MODELING -> CONTRACTS
     state, _ = fsm.advance()
@@ -215,16 +216,15 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
 
     # 准备 CONTRACTS 资产
     eng_dir = temp_workspace / "03-engineering-and-physics"
-    (eng_dir / "adrs").mkdir(parents=True, exist_ok=True)
-    (eng_dir / "contracts").mkdir(parents=True, exist_ok=True)
-    (eng_dir / "operational-model.md").write_text("# Operational Model", encoding="utf-8")
-    (eng_dir / "deployment-architecture.md").write_text("# Deployment Architecture", encoding="utf-8")
-    (eng_dir / "data-architecture.md").write_text("# Data Architecture", encoding="utf-8")
-    (eng_dir / "observability-design.md").write_text("# Observability", encoding="utf-8")
-    (eng_dir / "failure-resilience-matrix.md").write_text("# Resilience", encoding="utf-8")
-    (eng_dir / "adrs" / "adr-index.md").write_text("# ADR Index", encoding="utf-8")
-    (eng_dir / "contracts" / "openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
-    (eng_dir / "contracts" / "interface-contracts-overview.md").write_text("# Interface Contracts", encoding="utf-8")
+    (eng_dir / "03-08-adrs").mkdir(parents=True, exist_ok=True)
+    (eng_dir / "03-01-operational-model.md").write_text("# Operational Model", encoding="utf-8")
+    (eng_dir / "03-02-deployment-architecture.md").write_text("# Deployment Architecture", encoding="utf-8")
+    (eng_dir / "03-03-data-architecture.md").write_text("# Data Architecture", encoding="utf-8")
+    (eng_dir / "03-04-observability-design.md").write_text("# Observability", encoding="utf-8")
+    (eng_dir / "03-05-failure-resilience-matrix.md").write_text("# Resilience", encoding="utf-8")
+    (eng_dir / "03-06-interface-contracts-overview.md").write_text("# Interface Contracts", encoding="utf-8")
+    (eng_dir / "03-07-openapi.yaml").write_text("openapi: 3.1.0", encoding="utf-8")
+    (eng_dir / "03-08-adrs" / "adr-index.md").write_text("# ADR Index", encoding="utf-8")
 
     # 5. CONTRACTS -> SCAFFOLDING (HITL 批准)
     state, _ = fsm.advance(hitl_approved=True)
@@ -233,11 +233,11 @@ def test_full_lifecycle_progression(temp_workspace: Path) -> None:
     # 准备 SCAFFOLDING 资产
     scaff_dir = temp_workspace / "04-delivery-and-organization"
     scaff_dir.mkdir(parents=True, exist_ok=True)
-    (temp_workspace / ".agent-rules.md").write_text("# Rules", encoding="utf-8")
-    (scaff_dir / "organization-structure.md").write_text("# Org", encoding="utf-8")
-    (scaff_dir / "estimation-and-plan.md").write_text("# Plan", encoding="utf-8")
-    (scaff_dir / "first-step-poc.md").write_text("# PoC", encoding="utf-8")
-    (scaff_dir / "walking-skeleton-spec.json").write_text(json.dumps({"skeleton": True}), encoding="utf-8")
+    (scaff_dir / "04-01-organization-structure.md").write_text("# Org", encoding="utf-8")
+    (scaff_dir / "04-02-estimation-and-plan.md").write_text("# Plan", encoding="utf-8")
+    (scaff_dir / "04-03-first-step-poc.md").write_text("# PoC", encoding="utf-8")
+    (scaff_dir / "04-04-walking-skeleton-spec.json").write_text(json.dumps({"skeleton": True}), encoding="utf-8")
+    (scaff_dir / "04-05-agent-rules.md").write_text("# Rules", encoding="utf-8")
 
     # 6. SCAFFOLDING -> FINALIZED
     state, _ = fsm.advance()

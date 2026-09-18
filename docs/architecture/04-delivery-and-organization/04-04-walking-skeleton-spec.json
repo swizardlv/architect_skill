@@ -1,0 +1,16 @@
+{
+  "skeleton_version": "1.0.0",
+  "architecture_pattern": "Hexagonal",
+  "directories": [
+    "src/domain",
+    "src/ports",
+    "src/adapters",
+    "src/services",
+    "tests"
+  ],
+  "immutable_paths": [
+    "docs/architecture",
+    "src/ports"
+  ],
+  "rules_file": ".agent-rules.md"
+}

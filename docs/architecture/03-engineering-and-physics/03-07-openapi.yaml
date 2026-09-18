@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info:
+  title: Architecture Lifecycle API
+  version: 1.0.0
+paths:
+  /api/v1/status:
+    get:
+      summary: 获取当前架构生命周期状态
+      responses:
+        '200':
+          description: OK

@@ -1,11 +1,60 @@
 {
   "machine_name": "architecture_lifecycle_fsm",
   "version": "3.0.0",
-  "current_state": "INIT",
+  "current_state": "FINALIZED",
   "metadata": {
     "created_at": "2026-09-16T23:38:44.580836+00:00",
-    "last_updated_at": "2026-09-18T09:52:03.739300+00:00",
+    "last_updated_at": "2026-09-18T10:32:41.379810+00:00",
     "project_name": "unknown"
   },
-  "history": []
+  "history": [
+    {
+      "from_state": "INIT",
+      "to_state": "GRILLING",
+      "timestamp": "2026-09-18T10:32:41.372588+00:00",
+      "action": "START",
+      "hitl_approved": false,
+      "notes": ""
+    },
+    {
+      "from_state": "GRILLING",
+      "to_state": "GROUNDING",
+      "timestamp": "2026-09-18T10:32:41.374607+00:00",
+      "action": "APPROVE",
+      "hitl_approved": true,
+      "notes": ""
+    },
+    {
+      "from_state": "GROUNDING",
+      "to_state": "MODELING",
+      "timestamp": "2026-09-18T10:32:41.375521+00:00",
+      "action": "ARTIFACTS_VALIDATED",
+      "hitl_approved": false,
+      "notes": ""
+    },
+    {
+      "from_state": "MODELING",
+      "to_state": "CONTRACTS",
+      "timestamp": "2026-09-18T10:32:41.376498+00:00",
+      "action": "MODELS_VALIDATED",
+      "hitl_approved": false,
+      "notes": ""
+    },
+    {
+      "from_state": "CONTRACTS",
+      "to_state": "SCAFFOLDING",
+      "timestamp": "2026-09-18T10:32:41.377318+00:00",
+      "action": "APPROVE",
+      "hitl_approved": true,
+      "notes": ""
+    },
+    {
+      "from_state": "SCAFFOLDING",
+      "to_state": "FINALIZED",
+      "timestamp": "2026-09-18T10:32:41.379743+00:00",
+      "action": "SKELETON_INITIALIZED",
+      "hitl_approved": false,
+      "notes": ""
+    }
+  ]
 }
