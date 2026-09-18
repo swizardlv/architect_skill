@@ -922,7 +922,7 @@ def build_interactive_html(
   </div>
 
   <script>
-    const artifacts = {artifacts_json};
+    const artifacts = /*__CANVAS_DATA_START__*/{artifacts_json}/*__CANVAS_DATA_END__*/;
     window.__CANVAS_DATA__ = artifacts;
     window.__CANVAS_PROJECT_NAME__ = "{project_name}";
     let currentIndex = 0;

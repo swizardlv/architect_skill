@@ -114,7 +114,9 @@ class ArchitectureDocumentPolisher:
         # 2. 数据负载检查：验证 window.__CANVAS_DATA__ 或 const artifacts = [...]
         data_payload_valid = True
         artifacts_count = 0
-        data_match = re.search(r"(?:window\.__CANVAS_DATA__|const artifacts)\s*=\s*(\[.*?\])\s*;", content, re.DOTALL)
+        data_match = re.search(r"/\*__CANVAS_DATA_START__\*/(.*?)/\*__CANVAS_DATA_END__\*/", content, re.DOTALL)
+        if not data_match:
+            data_match = re.search(r"(?:window\.__CANVAS_DATA__|const artifacts)\s*=\s*(\[[\s\S]*?\])\s*;\s*\n\s*window", content)
         if not data_match:
             data_payload_valid = False
             errors.append("画板中未找到 artifacts 数据挂载定义")
