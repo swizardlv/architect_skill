@@ -12,11 +12,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-# 将当前目录和 00_orchestrator 目录加入 Python 搜索路径
+# 将当前目录和 scripts 目录加入 Python 搜索路径
 CURRENT_DIR = Path(__file__).parent.resolve()
-ORCHESTRATOR_DIR = CURRENT_DIR / "skills" / "00_orchestrator"
+SCRIPTS_DIR = CURRENT_DIR / "scripts"
 sys.path.insert(0, str(CURRENT_DIR))
-sys.path.insert(0, str(ORCHESTRATOR_DIR))
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from orchestrate_architecture_lifecycle import (  # noqa: E402
     ArchitectureLifecycleFSM,
@@ -42,8 +42,13 @@ def print_banner() -> None:
 def generate_sample_assets(fsm: ArchitectureLifecycleFSM) -> None:
     """生成整套标准架构样本资产，以便进行端到端全链路验证."""
     ws = fsm.workspace_root
-    templates_dir = fsm.repo_root / "templates"
     fsm.ensure_workspace_directories()
+
+    def find_template(name: str) -> Path | None:
+        for p in (fsm.repo_root / "skills").rglob(name):
+            if p.is_file():
+                return p
+        return None
 
     # 1. 00-grounding/grounding-spec.json
     grounding_json = {
@@ -80,12 +85,12 @@ def generate_sample_assets(fsm: ArchitectureLifecycleFSM) -> None:
     )
 
     # 2. 01-grounding/nfr-matrix.md & constraints-and-assumptions.md
-    nfr_tmpl = templates_dir / "nfr-matrix-template.md"
-    if nfr_tmpl.exists():
+    nfr_tmpl = find_template("nfr-matrix-template.md")
+    if nfr_tmpl and nfr_tmpl.exists():
         (ws / "01-grounding" / "nfr-matrix.md").write_text(nfr_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
 
-    const_tmpl = templates_dir / "constraints-template.md"
-    if const_tmpl.exists():
+    const_tmpl = find_template("constraints-template.md")
+    if const_tmpl and const_tmpl.exists():
         (ws / "01-grounding" / "constraints-and-assumptions.md").write_text(
             const_tmpl.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -261,14 +266,14 @@ stateDiagram-v2
         encoding="utf-8",
     )
 
-    adr_tmpl = templates_dir / "adr-template.md"
-    if adr_tmpl.exists():
+    adr_tmpl = find_template("adr-template.md")
+    if adr_tmpl and adr_tmpl.exists():
         (ws / "03-decisions" / "ADR-001-fsm-shell.md").write_text(
             adr_tmpl.read_text(encoding="utf-8"), encoding="utf-8"
         )
 
-    res_tmpl = templates_dir / "resilience-matrix-template.md"
-    if res_tmpl.exists():
+    res_tmpl = find_template("resilience-matrix-template.md")
+    if res_tmpl and res_tmpl.exists():
         (ws / "03-decisions" / "failure-resilience-matrix.md").write_text(
             res_tmpl.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -288,8 +293,8 @@ paths:
     (ws / "04-contracts" / "openapi.yaml").write_text(openapi_content, encoding="utf-8")
 
     # 5. 04-execution & .agent-rules.md
-    agent_rules_tmpl = templates_dir / "agent-rules-template.md"
-    if agent_rules_tmpl.exists():
+    agent_rules_tmpl = find_template("agent-rules-template.md")
+    if agent_rules_tmpl and agent_rules_tmpl.exists():
         (fsm.repo_root / ".agent-rules.md").write_text(
             agent_rules_tmpl.read_text(encoding="utf-8"), encoding="utf-8"
         )

@@ -16,11 +16,11 @@ from pathlib import Path
 from typing import Optional
 
 REPO_ROOT = Path(__file__).parent.parent.resolve()
-ORCHESTRATOR_DIR = REPO_ROOT / "skills" / "00_orchestrator"
-POLISHER_DIR = REPO_ROOT / "skills" / "06_refinement_and_polishing"
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+POLISHER_DIR = REPO_ROOT / "skills" / "architecture-refinement" / "scripts"
 
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(ORCHESTRATOR_DIR))
+sys.path.insert(0, str(SCRIPTS_DIR))
 sys.path.insert(0, str(POLISHER_DIR))
 
 from manage_test_workspaces import archive_case_workspace, update_cases_index_readme
