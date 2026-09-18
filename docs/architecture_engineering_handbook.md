@@ -124,4 +124,36 @@ python run.py --auto-approve
 | **9. 自动化合规扫描** | ArchUnit 分层规则检查、代码圈复杂度检测 | **Tool Schema 静态强类型校验、CI/CD 持续评测门禁、自动化对抗注入模糊测试** |
 | **10. 技术债务台账** | 重复代码、过长方法、旧版本框架未升级 | **“提示词打补丁”债务、上下文无序膨胀债务、特定闭源模型强绑定债务** |
 
+---
+
+## 8. “跑测试 -> 评估 -> 生成改进建议 -> 改进 -> 测试” 持续演进闭环
+
+为了确保在引入 Agent AI 全套复杂度后，架构体系依然具备自愈与自演进能力，本系统固化了双环持续迭代机制：
+
+```mermaid
+flowchart LR
+    Test["1. 跑测试与扫描<br/>npm test & document_polisher"] --> Eval["2. 全景评估<br/>audit_generated_assets<br/>(核验10大维度与ARB红线)"]
+    Eval --> Propose["3. 生成改进建议<br/>feedback_loop_evolver<br/>(根因反推至主控源头)"]
+    Propose --> Refine["4. 系统级改进<br/>深化打磨技能/模板/主控<br/>(修改元资产而非手工改生成物)"]
+    Refine --> Retest["5. 回归重测<br/>单元测试 + Smoke Evals"]
+```
+
+### 8.1 五步循环职责与对应技能
+
+1. **跑测试 (Run Tests & Audits)**：
+   - 运行工程级单测：`npm run compile && npm run lint && npm test`；
+   - 运行工件质量扫描：`python3 skills/06_refinement_and_polishing/document_polisher.py docs/architecture/`。
+2. **全景评估 (Evaluate Architecture Assets)**：
+   - 激活技能：[`audit_generated_architecture_assets.md`](file:///Users/swizard/code/architect_skill/skills/05_audit_and_evolution/audit_generated_architecture_assets.md)；
+   - 严格审查 10 大核心维度，重点核验 ARB AI 原生三大一票否决项（裸奔 Agent、无量化评测、无物理断电开关）。
+3. **生成改进建议 (Synthesize Evolution Proposals)**：
+   - 激活技能：[`feedback_loop_orchestrator_evolver.md`](file:///Users/swizard/code/architect_skill/skills/05_audit_and_evolution/feedback_loop_orchestrator_evolver.md)；
+   - 应用“问题反推与映射矩阵法则”，将下游代码与文档缺陷定向反推至对应的 Prompt、模板或主控门禁，输出 `docs/orchestrator_evolution_proposal.md`。
+4. **系统级改进 (Refine Orchestration & Specs)**：
+   - 激活技能：[`architecture-documentation-refinement`](file:///Users/swizard/code/architect_skill/skills/06_refinement_and_polishing/SKILL.md)；
+   - 坚持“**只修改主控、规则与模板，通过重跑测试使生成物自然达标**”的原则，更新 `skills/`、`templates/` 与 `fsm_config.json`。
+5. **回归重测 (Retest & Golden Baseline Verification)**：
+   - 重新执行测试与质量扫描，验证缺陷消除，确保各工件综合评分达标且 CI 门禁放行。
+
+
 

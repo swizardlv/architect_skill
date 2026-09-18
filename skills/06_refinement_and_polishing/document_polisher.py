@@ -169,7 +169,7 @@ class ArchitectureDocumentPolisher:
                                            bool(re.search(r"(无状态|Stateless)", content, re.IGNORECASE))
                 if not has_schema_and_stateless:
                     score -= 10
-                    suggestions.append("Agent CM 缺少'工具强类型 Schema 契约校验'或'编排组件完全无状态 (Stateless)'硬指标")
+                    suggestions.append("Agent CM 缺少'工具强类型 Schema 契约校验'或'编排组件无状态 (Stateless)'硬指标")
 
         # 6. OM (Operational Model) 专属规范深度审计 (IBM 标准: 逻辑/物理运行拓扑、CM映射与容灾)
         if "operational-model" in file_path.name.lower() or "deployment-model" in file_path.name.lower():

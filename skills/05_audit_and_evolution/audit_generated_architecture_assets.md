@@ -41,18 +41,31 @@
 
 ### 2.7 四层次系统架构文档完备性与文字可读性审查 (4-Layer Systematic Architecture & Prose Completeness)
 - [ ] **Layer 1 输入与边界完整性**：
-  - 是否不仅有 JSON，还在 `00-grounding/business-driver-and-use-cases.md` 中以专业文本清晰陈述了业务痛点、用户分类/角色、核心 Use Cases 与棕地/现有环境限制？
+  - 是否不仅有 JSON，还在 `00-grounding/business-driver-and-use-cases.md` 或 `01-grounding/business-drivers.md` 中以专业文本清晰陈述了业务痛点、自主度等级（LoA 1~5）、用户角色画像与动态 Token 经济学模型？
   - 是否在 `01-grounding/` 中具备量化 NFR 矩阵与不可违背的硬约束编目？
 - [ ] **Layer 2 概念与逻辑抽象完整性**：
-  - 是否在 `02-models/architecture-overview.md` 中提供了系统的使命叙述、Bounded Context 战略上下文映射与概念模型解析，杜绝只有空洞图表而无文字推演？
-  - 是否具备完整的 C4 Context、C4 Container 与领域实体/状态机逻辑模型？
+  - 是否在 `02-models/architecture-overview-diagram.md` 中提供了系统的使命叙述、认知控制平面分层、安全围栏与工具环境解析，杜绝空洞图表？
+  - 是否具备完整的 C4 Context、C4 Container、认知推理循环（ReAct/Reflection）与领域状态机模型？
 - [ ] **Layer 3 物理与工程权衡完整性**：
-  - 是否在 `03-decisions/deployment-and-observability.md` 中给出了多可用区物理部署拓扑、计算存储规格、数据架构（冷热分层/分库分片）、可观测性（RED 指标/W3C 追踪/审计日志）？
-  - 是否在 `04-contracts/interface-contracts-overview.md` 中对 OpenAPI 与数据边界协议给出详实的文字原则与字段级语义说明？
+  - 是否在 `03-decisions/` 与 `02-models/operational-model.md` 中给出了确定性 Shell 与概率 Core 分离、算力规格、受限沙箱、动态剪枝中间件与物理断电开关？
+  - 是否在 `03-decisions/contracts/` 或接口规范中对 OpenAPI、Tool Schema 与数据边界协议给出详实的文字原则与字段级语义说明？
 - [ ] **Layer 4 组织与交付实施完整性**：
-  - 是否在 `04-execution/organization-and-plan.md` 中显式应用康威定律（Conway's Law）将团队拓扑与领域限界上下文对齐，明确代码所有权（Code Ownership）？
-  - 是否给出了故事点（Story Points）与人月估算、双周迭代交付节奏与穿刺测试最小垂直切片（Walking Skeleton / PoC）？
+  - 是否在交付规约中显式应用康威定律（Conway's Law）将团队拓扑与认知上下文对齐，明确代码所有权（Code Ownership）？
+  - 是否给出了故事点（Story Points）与人天估算、双周迭代交付节奏与穿刺测试最小垂直切片（Walking Skeleton / PoC）？
 
+### 2.8 Agent 认知安全与自主权边界审计 (Agent Safety & Autonomy Boundaries)
+- [ ] **严禁裸奔 Agent (No Naked Execution)**：代码执行与外部写操作是否强制限定在隔离沙箱（Docker / Subprocess 受控容器），严禁在宿主机直接执行未隔离命令；外部写 API 是否具备只读防腐或前置人工审批（HITL）？
+- [ ] **物理断电开关 (Physical Kill Switch)**：是否物理具备一键熔断降级通道（一键切断模型自主调用，回退至人工接管或确定性规则）？
+- [ ] **Token 经济学与硬超时防死锁**：是否显式限定单次任务调用与会话的 Token 预算封顶（如单任务 Token $\le 8000$）？模型推理与代码执行是否具备 30s 硬超时强杀机制（SIGKILL），杜绝 Agent 无限重试与推理死循环？
+
+### 2.9 Tool 契约与认知防腐隔离 (Tool Schema & Cognitive Anti-Corruption)
+- [ ] **网关收敛红线 (Gateway-Only Ingress)**：业务层与 Adapter 是否严格禁止绕过统一 AI 网关直连外部大模型原生 SDK？
+- [ ] **Tool 强类型与最小权限**：暴露给 Agent 的 Tool Schema 是否具备严格的强类型参数校验（Pydantic / JSON Schema）？Tool 是否杜绝声明通配写权限？
+- [ ] **对抗性注入防护 (Prompt Injection Guardrails)**：输入输出通道是否具备安全围栏（Guardrails），阻断直接越狱与间接提示词污染？
+
+### 2.10 评测闭环与认知技术债务核验 (Evals Suite & Cognitive Debt Audit)
+- [ ] **持续评测套件具备性**：是否物理存在 Golden Evals 或 Smoke Evals 基准测试集（至少 100 个业务代表性样本）？是否具备量化的任务完成率（TCR）与幻觉率基线，并能挂载 CI 门禁？
+- [ ] **认知技术债务显性化**：台账中是否显式排查并登记了“提示词打补丁（Prompt Hacks）”、“上下文未修剪（Context Bloat）”与“专有模型强锁定”债务？严禁将应由代码沙箱保障的安全降级为自然语言提示词警告。
 
 ---
 
@@ -61,18 +74,21 @@
 ### 3.1 依赖输入资产
 - 架构需求与模型：`00-grounding/`、`01-grounding/`、`02-models/`、`03-decisions/`、`04-contracts/`、`04-execution/`
 - 工程代码骨架：`src/domain/`、`src/ports/`、`src/adapters/`、`tests/`、`.agent-rules.md`
+- 评测与治理配置：Evals 测试集、Tool Schema 定义、CI 架构合规扫描脚本、技债台账
 
 ### 3.2 产出报告规范 (`docs/audit_report.md` 或标准评审输出)
-必须包含以下五个板块：
+必须包含以下六个板块：
 1. **评审总览 (Executive Summary)**：成熟度评级（卓越 / 良好 / 存在风险 / 不合格）、Top 3 架构亮点、Top 3 致命隐患。
-2. **详细缺陷与整改清单 (Detailed Findings)**：按 P0 致命级、P1 严重级、P2 优化建议分类，标明文件路径与行号。
-3. **六边形代码骨架与 Vibe Coding 专项审查**：分层纯洁度、端口强类型性、槽位并发安全性评估。
-4. **自动化测试与 CI 覆盖评估**：测试工程存在性、测试盲区与故障注入场景建议。
-5. **最终准入结论 (Sign-off Recommendation)**：明确判定【准予进入编码实现】或【打回修改并重新跑状态机门禁 (REJECTED_BLOCKED)】。
+2. **ARB 一票否决红线核验 (Instant Rejection Verification)**：逐项判定“裸奔 Agent”、“无量化评测”与“无物理断电开关”是否存在违规。
+3. **详细缺陷与整改清单 (Detailed Findings)**：按 P0 致命级、P1 严重级、P2 优化建议分类，标明文件路径与行号。
+4. **六边形代码骨架与 Tool 契约专项审查**：分层纯洁度、端口强类型性、Tool 权限与槽位并发安全性评估。
+5. **自动化测试与 Evals CI 覆盖评估**：测试工程存在性、Smoke Evals 耗时（< 5 min）、TCR 衰减门禁与故障注入场景建议。
+6. **最终准入结论 (Sign-off Recommendation)**：明确判定【准予进入编码实现】或【打回修改并重新跑状态机门禁 (REJECTED_BLOCKED)】。
 
 ---
 
 ## 4. Gatekeeper Exit Criteria (准出门禁自查清单)
-- [ ] 覆盖了检查清单中的全部 6 大核心维度。
-- [ ] 所有 P0/P1 缺陷均精确定位至具体的实体、接口或文件路径。
+- [ ] 覆盖了检查清单中的全部 10 大核心维度（含传统工程与 Agent 原生维度）。
+- [ ] 所有 P0/P1 缺陷均精确定位至具体的实体、接口、Prompt 或配置文件路径。
+- [ ] 严格核验了 ARB 一票否决红线，无未受限高危行为。
 - [ ] 明确给出了最终放行或打回结论及前置放行条件。
