@@ -297,6 +297,15 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("业务目标缺少业务赞助人双向确认与冻结签署 (Playback & Sponsor Sign-off)")
 
+            # 如果涉及 Agent / AI 智能体系统，检查自主等级 (LoA) 与人机协作容错回退机制
+            is_agent_system = bool(re.search(r"(Agent|智能体|LLM|大模型|AI Coding|推理)", content, re.IGNORECASE))
+            if is_agent_system:
+                has_loa = bool(re.search(r"(自主等级|Level of Autonomy|LoA|L1|L2|L3|Copilot|Human-in-the-loop|Autonomous)", content, re.IGNORECASE))
+                has_fallback = bool(re.search(r"(回退|Fallback|容错底线|人工介入|降级)", content, re.IGNORECASE))
+                if not (has_loa and has_fallback):
+                    score -= 10
+                    suggestions.append("Agent AI 业务目标缺少明确的'自主等级 (Level of Autonomy, LoA: L1/L2/L3)'或'容错底线与回退机制 (Fallback)'")
+
         # 10. Constraints & Assumptions 专属规范深度审计 (IBM 不可逾越边界三大范畴标准)
         is_constraints_file = "constraints" in file_path.name.lower() or "invariants" in file_path.name.lower()
 
@@ -317,6 +326,16 @@ class ArchitectureDocumentPolisher:
             if missing_constraint_types:
                 score -= 15
                 suggestions.append(f"约束条件缺少关键范畴覆盖: {missing_constraint_types}")
+
+            # 如果涉及 Agent / AI 智能体系统，检查 Token 单位经济学、模型中立性与爆炸半径约束
+            is_agent_system = bool(re.search(r"(Agent|智能体|LLM|大模型|AI Coding|推理)", content, re.IGNORECASE))
+            if is_agent_system:
+                has_token_budget = bool(re.search(r"(Token|成本上限|Hard Cap|预算硬顶|Unit Economics)", content, re.IGNORECASE))
+                has_model_agnostic = bool(re.search(r"(模型中立|模型网关|LLM Gateway|Model Agnostic|开源模型)", content, re.IGNORECASE))
+                has_blast_radius = bool(re.search(r"(爆炸半径|Blast Radius|沙箱|最小特权|权限隔离)", content, re.IGNORECASE))
+                if not (has_token_budget and has_model_agnostic and has_blast_radius):
+                    score -= 15
+                    suggestions.append("Agent AI 架构约束缺少'Token成本硬顶'、'模型中立性/网关'或'爆炸半径沙箱隔离 (Blast Radius)'硬约束")
 
             # 检查约束与选择区分检验 (Constraint vs Decision Test)
             has_decision_distinction = bool(re.search(r"(Constraint vs|约束与决策|约束与选择|个人技术偏好|区分检验)", content, re.IGNORECASE))
