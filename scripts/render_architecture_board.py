@@ -462,12 +462,12 @@ def render_board(
         Path: 生成的 HTML 绝对路径
     """
     ws = Path(workspace_root).resolve()
-    # 优先使用全新系统架构设计目录 02-architecture-design，若无则使用 02-models
-    models_dir = ws / "02-architecture-design"
-    if not models_dir.exists() and (ws / "02-models").exists():
-        models_dir = ws / "02-models"
+    models_dir = ws / "02-models"
+    if not models_dir.exists() and (ws / "02-architecture-design").exists():
+        models_dir = ws / "02-architecture-design"
     models_dir.mkdir(parents=True, exist_ok=True)
 
+    decisions_dir = ws / "03-decisions"
     eng_dir = ws / "03-engineering-and-physics"
 
     def find_first_existing(paths: List[Path]) -> Optional[Path]:
@@ -476,42 +476,49 @@ def render_board(
                 return p
         return None
 
-    # Architecture Thinking 核心 7 维图谱标准
+    # Architecture Thinking 核心 7 维图谱标准 (兼容 C4 标签与深度设计规范)
     diagram_candidates: List[Tuple[str, List[Path]]] = [
-        ("📐 AOD (架构全景概览图 / C4 Context)", [
-            models_dir / "aod.mmd",
+        ("🌐 System Context (系统上下文边界图 / C4 Context)", [
+            models_dir / "system-context.md",
+            models_dir / "c4-context.mmd",
+            models_dir / "system-context-diagram.md",
+        ]),
+        ("📐 AOD (架构全景概览图 / 5-Layer AOD)", [
             models_dir / "architecture-overview-diagram.md",
+            models_dir / "aod.mmd",
             models_dir / "c4-context.mmd",
         ]),
         ("⚙️ CM (组件结构模型图 / C4 Container)", [
-            models_dir / "component-model.mmd",
             models_dir / "component-model.md",
+            models_dir / "component-model.mmd",
             models_dir / "c4-container-overview.mmd",
         ]),
-        ("🧩 LM (领域逻辑模型图)", [
-            models_dir / "logical-model.mmd",
-            models_dir / "domain-model.mmd",
-            models_dir / "domain-logical-model.md",
-        ]),
-        ("🏗️ DM (基础设施部署拓扑图)", [
-            eng_dir / "deployment-model.mmd",
-            eng_dir / "operational-model.md",
-            eng_dir / "deployment-architecture.md",
-        ]),
-        ("🔄 FSM (生命周期状态机)", [
-            models_dir / "lifecycle-fsm.mmd",
-            models_dir / "domain-logical-model.md",
-        ]),
-        ("⏱️ Interaction Sequence (交互时序协议)", [
+        ("⏱️ Interaction Sequence (端到端交互时序图)", [
+            models_dir / "sequence-and-dataflow.md",
             models_dir / "interaction-sequence.mmd",
         ]),
-        ("🌊 Data Flow Pipeline (数据流向与分级管道)", [
+        ("🧩 CDM & ER (概念数据模型与领域实体关系)", [
+            models_dir / "conceptual-data-model.md",
+            models_dir / "domain-model.mmd",
+            models_dir / "domain-logical-model.md",
+            models_dir / "logical-model.mmd",
+        ]),
+        ("🏗️ OM (物理运行模型与部署拓扑 / Deployment)", [
+            decisions_dir / "operational-model.md",
+            eng_dir / "operational-model.md",
+            eng_dir / "deployment-model.mmd",
+            eng_dir / "deployment-architecture.md",
+        ]),
+        ("🌊 Data Flow Pipeline & FSM (数据流向与生命周期状态机)", [
+            models_dir / "lifecycle-fsm.mmd",
             models_dir / "data-flow.mmd",
-            eng_dir / "data-architecture.md",
+            models_dir / "domain-logical-model.md",
+            decisions_dir / "failure-resilience-matrix.md",
         ]),
     ]
 
     diagrams: List[Dict[str, str]] = []
+    seen_files = set()
     for title, candidates in diagram_candidates:
         match_file = find_first_existing(candidates)
         if match_file:
@@ -521,6 +528,23 @@ def render_board(
                 if not is_valid:
                     print(f"⚠️ [Mermaid语法警告] {match_file.name} 存在语法隐患: {err_msg}", file=sys.stderr)
                 diagrams.append({"title": title, "code": code, "file": match_file.name})
+                seen_files.add(match_file.resolve())
+
+    # 动态扫描补充：自动搜集工作区中其他包含合法 Mermaid 的工件
+    for md_file in sorted(ws.rglob("*.md")) + sorted(ws.rglob("*.mmd")):
+        if md_file.resolve() in seen_files or md_file.name.startswith((".", "_")) or "archive" in str(md_file):
+            continue
+        code = extract_mermaid_code(md_file)
+        if code:
+            is_valid, _ = validate_mermaid_syntax(code)
+            if is_valid:
+                doc_title = md_file.stem.replace("-", " ").replace("_", " ").title()
+                diagrams.append({
+                    "title": f"📊 {doc_title}",
+                    "code": code,
+                    "file": md_file.name
+                })
+                seen_files.add(md_file.resolve())
 
     # 若未找到任何图，读取 sample 默认图保证展示
     if not diagrams:
