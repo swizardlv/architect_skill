@@ -445,6 +445,56 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("CDM 缺少合格性'三步压力测试' (业务走查、生命周期完整性、驱动 CM 验证) 自检记录")
 
+        # 14. Utility Tree & ATAM 场景推演专属规范深度审计 (SEI / IBM 架构权衡分析法标准)
+        is_atam_file = "utility-tree" in file_path.name.lower() or "atam" in file_path.name.lower()
+
+        if is_atam_file and file_path.suffix.lower() == ".md":
+            # 检查效用树分级结构与二维优先级矩阵定级
+            has_utility_matrix = bool(re.search(r"\|.*(效用树|质量属性维度|场景标识|业务重要性|技术实现风险|推演级别).*\|", content, re.IGNORECASE))
+            has_priority_ranking = bool(re.search(r"(\(High,\s*High\)|\(H,\s*H\)|重点推演|Priority\s*1)", content, re.IGNORECASE))
+            if not (has_utility_matrix and has_priority_ranking):
+                score -= 15
+                suggestions.append("ATAM 缺少结构化效用树推导矩阵或 (High, High) 二维优先级定级")
+
+            # 检查六要素场景法 (刺激源、刺激、环境、构件、响应、度量)
+            has_six_parts = bool(re.search(r"(刺激源|Source)", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(刺激|Stimulus)", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(环境|Environment)", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(构件|Artifact)", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(响应|Response)", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(度量|Response Measure)", content, re.IGNORECASE))
+            if not has_six_parts:
+                score -= 20
+                suggestions.append("ATAM 场景定义未完整遵循'六要素场景法' (刺激源、刺激、环境、构件、响应、度量)")
+
+            # 检查四大核心推演产出 (敏感点、权衡点、架构风险、无风险项)
+            has_sensitivity = bool(re.search(r"(敏感点|Sensitivity\s*Point)", content, re.IGNORECASE))
+            has_tradeoff = bool(re.search(r"(权衡点|Trade-off\s*Point)", content, re.IGNORECASE))
+            has_risk = bool(re.search(r"(架构风险|风险点|Architectural\s*Risk)", content, re.IGNORECASE))
+            has_non_risk = bool(re.search(r"(无风险项|Non-Risk)", content, re.IGNORECASE))
+
+            missing_outputs = []
+            if not has_sensitivity: missing_outputs.append("敏感点 (Sensitivity Point)")
+            if not has_tradeoff: missing_outputs.append("权衡点 (Trade-off Point)")
+            if not has_risk: missing_outputs.append("架构风险 (Risk)")
+            if not has_non_risk: missing_outputs.append("无风险项 (Non-Risk)")
+
+            if missing_outputs:
+                score -= 20
+                suggestions.append(f"ATAM 场景推演缺少核心产出类别: {', '.join(missing_outputs)}")
+
+            # 检查拔线断流沙盘演练
+            has_sever_cord = bool(re.search(r"(拔线|断流|Sever the Cord)", content, re.IGNORECASE))
+            if not has_sever_cord:
+                score -= 10
+                suggestions.append("ATAM 缺少'拔线与断流'沙盘极限故障推演记录")
+
+            # 检查风险处置闭环矩阵 (Risk-to-Action: 关联 PoC、新 ADR 或技术债务)
+            has_risk_closure = bool(re.search(r"\|.*(风险编号|处置动作|PoC|ADR|闭环状态|Action).*\|", content, re.IGNORECASE))
+            if not has_risk_closure:
+                score -= 15
+                suggestions.append("ATAM 缺少'风险处置闭环追踪矩阵' (所有风险必须强制绑定 PoC、ADR 或技术债务)")
+
         score = max(0, min(100, score))
 
 
