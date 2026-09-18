@@ -105,7 +105,7 @@ class ArchitectureLifecycleFSM:
             auto_persist: 是否在每次状态改变后自动持久化到 .state.json
         """
         self.module_dir = Path(__file__).parent.resolve()
-        self.repo_root = self.module_dir.parent.parent.resolve()
+        self.repo_root = self.module_dir.parent.resolve()
 
         if config_path is None:
             self.config_path = self.module_dir / "fsm_config.json"
