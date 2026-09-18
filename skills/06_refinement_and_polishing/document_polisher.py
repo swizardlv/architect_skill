@@ -258,6 +258,29 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("ADR 缺少自动化落地遵从性与架构守护检查清单 (Compliance Verification)")
 
+            # Agent AI 专属 ADR 深度审计 (确定性锚点、Prompt 锁定逆转成本、黑盒排障代价、评测基准数据)
+            is_agent_adr = bool(re.search(r"(Agent|智能体|LLM|大模型|Prompt|Token|StateGraph|ReAct|MicroVM|推理)", content, re.IGNORECASE))
+            if is_agent_adr:
+                has_deterministic_anchor = bool(re.search(r"(确定性锚点|Deterministic Anchor|外围.*代码|硬熔断|计数器|状态机守护|自觉性|工程确定性)", content, re.IGNORECASE))
+                if not has_deterministic_anchor:
+                    score -= 15
+                    suggestions.append("Agent ADR 缺少'确定性锚点 (Deterministic Anchor)'原则 (严禁单点信任大模型自觉性，需有外围代码硬约束)")
+
+                has_vendor_neutrality = bool(re.search(r"(锁定|Lock-in|逆转成本|Vendor Neutrality|供应商绑定|网关隔离|迁移成本)", content, re.IGNORECASE))
+                if not has_vendor_neutrality:
+                    score -= 10
+                    suggestions.append("Agent ADR 缺少模型/Prompt 锁定与'逆转成本评估 (Vendor Neutrality Review)'")
+
+                has_debuggability = bool(re.search(r"(可观测|黑盒|排障|Debuggability|Tracing|链路追踪|复盘成本)", content, re.IGNORECASE))
+                if not has_debuggability:
+                    score -= 10
+                    suggestions.append("Agent ADR 负面代价中缺少'可观测性与黑盒排障成本 (Debuggability Impact)'分析")
+
+                has_evals_grounding = bool(re.search(r"(评测基准|Evals|Golden Dataset|Benchmark|测试集)", content, re.IGNORECASE))
+                if not has_evals_grounding:
+                    score -= 10
+                    suggestions.append("Agent ADR 方案对比缺少客观'评测基准数据支撑 (Evals Grounding)'，存在主观定性风险")
+
         # 8. ARC (Architecture Requirements Checklist) 专属规范深度审计 (IBM URPS+ 标准)
         is_arc_file = "requirements-checklist" in file_path.name.lower() or "arc-" in file_path.name.lower()
 
