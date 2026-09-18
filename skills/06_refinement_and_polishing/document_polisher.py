@@ -535,6 +535,57 @@ class ArchitectureDocumentPolisher:
                 score -= 15
                 suggestions.append("PoC 缺少明确的结项最终决议或 100% 架构闭环反哺记录 (必须反哺修改 CM/OM/ADR)")
 
+        # 16. ARB (Architecture Review Board) 评审准入与终审闸口专项深度审计
+        is_arb_file = "arb" in file_path.name.lower()
+
+        if is_arb_file and file_path.suffix.lower() == ".md":
+            # 检查准入核验门槛与工件完整性 (AOD, CM, OM, CDM, ARC, ADR)
+            has_entry_checklist = bool(re.search(r"\|.*(准入|核验门槛|工件|Checklist|Entry).*\|", content, re.IGNORECASE))
+            has_core_artifacts = bool(re.search(r"(AOD|概览图)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(CM|组件模型)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(OM|运行模型)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(ARC|架构需求)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(ADR|决策)", content, re.IGNORECASE))
+            if not (has_entry_checklist and has_core_artifacts):
+                score -= 15
+                suggestions.append("ARB 评审缺少'准入检查清单'或未完整涵盖核心架构工件包 (AOD, CM, OM, CDM, ARC, ADR)")
+
+            # 检查跨域横切会签预审 (InfoSec 安全合规与 SRE 运维)
+            has_presignoffs = bool(re.search(r"(安全|合规|InfoSec|Compliance)", content, re.IGNORECASE)) and \
+                              bool(re.search(r"(运维|SRE|基础设施|Infra)", content, re.IGNORECASE)) and \
+                              bool(re.search(r"(会签|预审|Sign-off)", content, re.IGNORECASE))
+            if not has_presignoffs:
+                score -= 15
+                suggestions.append("ARB 评审缺少'信息安全(InfoSec)'与'基础架构(SRE)'跨域会签预审记录")
+
+            # 检查高风险 PoC 验证避险支持
+            has_poc_support = bool(re.search(r"(PoC|概念验证|压测|实测)", content, re.IGNORECASE))
+            if not has_poc_support:
+                score -= 10
+                suggestions.append("ARB 评审缺少对高风险技术项的'PoC 实证结项与破坏性实验'背书")
+
+            # 检查 ARB 五维核心评估质询
+            has_eval_framework = bool(re.search(r"(业务与价值|Business\s*Fit)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(可行性|NFR|履约)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(权衡|代价|Trade-off)", content, re.IGNORECASE)) and \
+                                 bool(re.search(r"(运维|Day-2|生命周期)", content, re.IGNORECASE))
+            if not has_eval_framework:
+                score -= 15
+                suggestions.append("ARB 评审缺少'五维深度评估审查框架' (业务对齐、NFR可行性、标准合规、权衡透明度、Day-2运维)")
+
+            # 检查已知局限与技术债务台账 (Known Limitations & Debt Ledger)
+            has_debt_ledger = bool(re.search(r"\|.*(技债编号|技术债务|Known Limitations|债务简述|偿还|Ledger).*\|", content, re.IGNORECASE))
+            if not has_debt_ledger:
+                score -= 15
+                suggestions.append("ARB 评审缺少结构化的'已知局限与技术债务台账 (Known Limitations & Debt Ledger)'")
+
+            # 检查 ARB 四大规范裁决结论与整改行动项
+            has_verdict = bool(re.search(r"(Approved|Conditionally\s*Approved|Architecture\s*Exception|Rejected|裁决结论)", content, re.IGNORECASE))
+            has_action_items = bool(re.search(r"(行动项|Action\s*Item|整改|复核)", content, re.IGNORECASE))
+            if not (has_verdict and has_action_items):
+                score -= 15
+                suggestions.append("ARB 评审缺少明确的'四大裁决结论之一'或'整改行动项 (Action Items)'与责任期限")
+
         score = max(0, min(100, score))
 
 
