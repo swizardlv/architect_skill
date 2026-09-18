@@ -150,12 +150,10 @@ architect_skill_tests/
 ├── cbs_engine/                    # 案例 1: 跨境清算与反洗钱推理系统
 │   ├── README.md                  # 该案例专属工程说明
 │   ├── .agent-rules.md            # 该案例专属防跑偏规则
-│   ├── docs/architecture/         # 该案例全生命周期架构资产
-│   │   ├── 00-grounding/
+│   ├── docs/architecture/         # 该案例全生命周期架构资产 (10 大环节)
 │   │   ├── 01-grounding/
 │   │   ├── 02-models/
 │   │   ├── 03-decisions/
-│   │   ├── 04-contracts/
 │   │   ├── 04-execution/
 │   │   └── architecture_board.html# 该案例专属交互画板
 │   └── src/                       # 该案例专属物理工程代码骨架

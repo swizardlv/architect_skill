@@ -15,24 +15,27 @@ from pathlib import Path
 
 
 def clean_legacy_directories(case_dir: Path) -> None:
-    """清理历史遗留的废弃空目录 (如 00-grounding, 02-models 等)."""
+    """清理历史遗留的废弃空目录 (仅当目录为空时清理)."""
     arch_root = case_dir / "docs" / "architecture"
     if not arch_root.exists():
         return
     legacy_dirs = [
         "00-grounding",
-        "01-grounding",
-        "02-models",
-        "03-decisions",
+        "00-state",
         "04-contracts",
-        "04-execution",
+        "01-requirements",
+        "02-architecture-design",
+        "03-engineering-and-physics",
+        "04-delivery-and-organization",
     ]
     for leg in legacy_dirs:
         leg_path = arch_root / leg
         if leg_path.exists() and leg_path.is_dir():
-            # 若为空或仅包含空子目录，安全清除
-            shutil.rmtree(leg_path, ignore_errors=True)
-            print(f"🧹 [自动清理] 清除历史遗留空目录: {leg_path.name}")
+            # 仅当为空或仅包含空子目录时安全清理
+            has_files = any(p.is_file() for p in leg_path.rglob("*"))
+            if not has_files:
+                shutil.rmtree(leg_path, ignore_errors=True)
+                print(f"🧹 [自动清理] 清除历史遗留空目录: {leg_path.name}")
 
 
 def archive_case_workspace(case_dir: Path, base_dir: Path) -> Path | None:
