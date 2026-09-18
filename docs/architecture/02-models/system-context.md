@@ -13,48 +13,66 @@ flowchart TD
     classDef personStyle fill:#f0fdfa,stroke:#0d9488,stroke-width:2px,color:#134e4a;
     classDef coreStyle fill:#eff6ff,stroke:#2563eb,stroke-width:3px,color:#1e3a8a;
     classDef extStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 4 4,color:#1e293b;
+    classDef aiStyle fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,stroke-dasharray: 4 4,color:#701a75;
+    classDef sandboxStyle fill:#fffbeb,stroke:#d97706,stroke-width:2px,stroke-dasharray: 4 4,color:#78350f;
 
-    subgraph Actors ["外部干系人与参与角色 (Actors)"]
-        architect["👤 软件架构师 (Lead Architect)<br/>[发起架构设计任务并输入系统愿景与约束]"]:::personStyle
-        reviewer["🛡️ 技术评审人 (ARB Reviewer)<br/>[在关键质量门禁节点执行审核与签字]"]:::personStyle
-        developer["💻 研发工程师 (Developer)<br/>[查阅架构工件与契约开展编码实现]"]:::personStyle
+    subgraph Actors ["外部参与者与人机协同角色 (Actors & HITL)"]
+        architect["👤 软件架构师 (Lead Architect)<br/>[发起系统愿景输入与架构参数设计]"]:::personStyle
+        approver["🛡️ ARB 技术仲裁员 (Human Approver / ARB)<br/>[高危决策审批、质量门禁裁决与异常人工接管 (HITL)]"]:::personStyle
+        developer["💻 下游研发工程师 (Developer)<br/>[查阅架构工件与消费 Schema 契约]"]:::personStyle
     end
 
     subgraph CoreBoundary ["本次构建责任范围 (In-Scope)"]
         system["⚙️ 目标系统: 架构技能编排与治理套件 (Architect Skill Engine)<br/>[承担需求提纯、确定性状态推进、工业级质量打磨与看板渲染全流程 (单一黑盒实体)]"]:::coreStyle
     end
 
-    subgraph ExternalSystems ["外部依赖系统 (Out-of-Scope)"]
-        llmGateway["🌐 大语言模型推理网关 (LLM Reasoning Gateway)<br/>[提供底层概率推理、代码生成与多轮会话理解]"]:::extStyle
-        vcsRepo["📦 代码版本控制仓库 (Git Repository)<br/>[持久化版本快照、分支管理与 CI/CD 触发]"]:::extStyle
-        runtimeEnv["🖥️ 宿主操作系统与沙箱运行环境 (OS & Node/Python Runtime)<br/>[提供文件系统 I/O、子进程调度与单测执行]"]:::extStyle
-        browserClient["📊 现代 Web 浏览器引擎 (Web Browser UI)<br/>[解析 HTML 看板与动态渲染 Mermaid 矢量图表]"]:::extStyle
+    subgraph ExternalCognition ["外部认知与模型基座 (Out-of-Scope)"]
+        primaryLLM["🧠 主选推理模型基座 (Claude / Primary LLM)<br/>[深度架构推导、代码实现与复杂逻辑审查]"]:::aiStyle
+        fallbackLLM["🔄 备用推理模型基座 (Gemini / Fallback LLM)<br/>[快速原型生成、多模态与 429 熔断降级兜底]"]:::aiStyle
     end
 
-    %% 交互调用连线 (带明确业务语义、协议与方向)
-    architect -->|"1. 提交初始系统规格与业务目标 [CLI 命令 / Prompt]"| system
-    reviewer -->|"2. 审查工件并在门禁节点执行签署 [HITL 交互 / 批注]"| system
-    system -->|"3. 发送结构化提示词并获取推导建议 [HTTPS API via Semantic ACL]"| llmGateway
-    system -->|"4. 读写架构规范资产与工作区快照 [标准 POSIX 文件 I/O]"| runtimeEnv
-    system -->|"5. 触发版本提交与状态同步 [Git CLI over SSH]"| vcsRepo
-    system -->|"6. 生成并导出交互式架构看板 [静态 HTML / SVG]"| browserClient
-    developer -->|"7. 查阅最新架构看板与接口契约 [HTTP / 本地文件浏览]"| browserClient
+    subgraph ExternalActuators ["受控工具与执行沙箱 (Out-of-Scope)"]
+        toolSandbox["📦 受控代码与命令执行沙箱 (Tool Sandbox & CLI Engine)<br/>[隔离运行 py_compile、pytest 单测与依赖构建]"]:::sandboxStyle
+        vcsRepo["🏛️ 代码版本控制系统 (Git Repository)<br/>[持久化分支提交、标签打标与远程同步 (不可逆副作用)]"]:::extStyle
+    end
+
+    subgraph ExternalKnowledge ["外部知识与展示呈现 (Out-of-Scope)"]
+        templateHub["📚 标准规范与模板资产库 (Standard Templates & Prompts)<br/>[只读调阅架构模板、规约与质量评分标准]"]:::extStyle
+        browserClient["📊 现代 Web 浏览器引擎 (Web Browser UI)<br/>[离线/在线渲染静态架构看板与 Mermaid 图谱]"]:::extStyle
+    end
+
+    %% 交互调用连线 (明确标注数据属性、协议、只读探查与不可逆副作用)
+    architect -->|"1. 提交初始系统愿景与约束规格 [CLI / Prompt]"| system
+    system -->|"2. 发起高危架构决策与关键里程碑签署请求 [HITL 交互协议]"| approver
+    approver -->|"3. 审核放行或驳回整改 (人工截断围栏) [审批签字决议]"| system
+
+    system -->|"4. 发送项目脱敏架构上下文与推导指令 [HTTPS via Semantic ACL]"| primaryLLM
+    primaryLLM -.->|"5. 突发 429 频控或超时透明切换 [Fallback 路由]"| fallbackLLM
+    fallbackLLM -->|"6. 返回结构化架构推导结果与 Tool Call [JSON Schema / SSE]"| system
+
+    system -->|"7. 加载标准架构模板与规则定义 (只读探查) [POSIX 只读 I/O]"| templateHub
+    system -->|"8. 隔离执行自动化编译与单元测试 (低危沙箱执行) [Subprocess Sandbox API]"| toolSandbox
+    system -->|"9. 触发代码变更暂存与正式提交 (不可逆副作用，需门禁放行) [Git CLI via SSH]"| vcsRepo
+    system -->|"10. 导出架构全景看板文件 [静态 HTML5/SVG 文件 I/O]"| browserClient
+    developer -->|"11. 查阅最新架构设计与系统上下文 [HTTP / 离线浏览]"| browserClient
 ```
 
 ---
 
 ## 2. 上下文实体交互矩阵 (Context Interaction Matrix)
 
-| 实体分类 | 实体名称 (Entity) | 职责与系统关系描述 (Description & Interaction) | 数据流向与核心契约 (Data Flow & Contract) | 边界责任归属 (Ownership) |
-| :--- | :--- | :--- | :--- | :--- |
-| **中心系统** | **架构技能编排与治理套件** | **[核心黑盒 / 本次构建范围 In-Scope]** 承担需求澄清、确定性生命周期流转、质量规范打磨与多图表可视化全流程。 | 不适用 (中心黑盒) | **本团队研发与 SLA 责任区 (In-Scope)** |
-| **外部角色** | 软件架构师 (Lead Architect) | 负责输入业务愿景与硬约束，主导系统结构推导与决策仲裁。 | `架构师` $\to$ 发起架构任务 [CLI / 对话] $\to$ `系统` | 用户交互终端 (In-Scope 触发源) |
-| **外部角色** | 技术评审人 (ARB Reviewer) | 负责关键里程碑审查（如 AOD、ARC、ADR），执行放行或打回。 | `评审人` $\to$ 审核与签署指令 [HITL 协议] $\to$ `系统` | 架构治理委员会 |
-| **外部角色** | 研发工程师 (Developer) | 消费系统产出的标准架构文档、Schema 契约与指导规约开展工程落地。 | `系统` $\to$ 交付架构规格书 [Markdown/HTML] $\to$ `开发人员` | 下游研发团队 |
-| **外部系统** | 大语言模型推理网关 | 提供底层认知推理支撑，系统通过语义防腐层与结构化输出约束调用。 | `系统` $\to$ 推理请求 [HTTPS via Semantic ACL] $\to$ `模型网关` | 外部云模型服务商 (Out-of-Scope) |
-| **外部系统** | 代码版本控制系统 (Git) | 负责项目源码、测试工作区与架构文档的持久化托管与版本追踪。 | `系统` $\to$ 代码提交与打标 [Git 命令] $\to$ `Git 服务` | 基础设施平台服务 (Out-of-Scope) |
-| **外部系统** | 宿主操作系统与运行时 | 提供 Python 3.10+、Node.js 运行容器及文件系统原子持久化能力。 | `系统` $\to$ 状态原子写入与进程调用 [POSIX API] $\to$ `宿主OS` | 本地执行宿主机 (Out-of-Scope) |
-| **外部系统** | 现代 Web 浏览器引擎 | 提供用于离线或在线查看 `architecture_board.html` 的渲染支持。 | `系统` $\to$ 静态看板文件 [HTML5/JS/Mermaid] $\to$ `浏览器` | 客户端渲染终端 (Out-of-Scope) |
+| 实体分类 | 实体名称 (Entity) | 职责与系统关系描述 (Description & Interaction) | 交互类型与副作用界限 (Side-effect Boundary) | 数据流向与核心契约 (Data Flow & Contract) | 边界责任归属 (Ownership) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **中心系统** | **架构技能编排与治理套件** | **[核心黑盒 / 本次构建范围 In-Scope]** 承担需求澄清、确定性状态机流转、质量打磨与看板渲染全流程。 | 业务状态编排与调度 (中心黑盒) | 不适用 (中心黑盒) | **本团队研发与 SLA 责任区 (In-Scope)** |
+| **外部角色** | 软件架构师 (Lead Architect) | 负责输入业务愿景与硬约束，主导系统设计参数配置。 | 需求输入 / 无直接副作用 | `架构师` $\to$ 发起架构任务 [CLI/对话] $\to$ `系统` | 任务发起方 (In-Scope 触发源) |
+| **外部角色** | ARB 技术仲裁员 (Human Approver) | 负责关键里程碑审查（如 AOD、ARC、ADR），执行高危操作审批与人工接管。 | 决策仲裁 / 安全截断门禁 (HITL) | `系统` $\leftrightarrow$ {审批申请与放行裁决} [{HITL 协议}] $\leftrightarrow$ `仲裁员` | 架构治理委员会 (Out-of-Scope) |
+| **外部角色** | 下游研发工程师 (Developer) | 消费套件产出的标准架构文档、Schema 契约与指导规约开展工程编码。 | 工件消费 / 只读获取 | `系统` $\to$ 交付架构规格书 [Markdown/HTML] $\to$ `开发人员` | 研发团队 (Out-of-Scope) |
+| **外部系统** | 主选推理模型基座 (Claude LLM) | 承担深度认知推理、架构权衡与代码审查任务。 | 概率认知推导 / 语义输出依赖 | `系统` $\to$ 脱敏 Prompt [HTTPS via ACL] $\to$ `Claude API` | 外部云模型服务商 (Out-of-Scope) |
+| **外部系统** | 备用推理模型基座 (Gemini LLM) | 承担前端看板原型设计、多模态处理及主模型 429 限流时的兜底保障。 | 降级备援 / 多模态推理 | `系统` $\to$ 降级 Prompt [HTTPS via ACL] $\to$ `Gemini API` | 外部云模型服务商 (Out-of-Scope) |
+| **外部系统** | 受控代码执行沙箱 (Tool Sandbox) | 提供隔离子进程环境，运行 Python 编译检查与 pytest 单测，防止环境污染。 | 受控隔离执行 / 物理隔离保护 | `系统` $\to$ 驱动测试与编译 [Subprocess API] $\to$ `沙箱容器` | 宿主机执行环境 (Out-of-Scope) |
+| **外部系统** | 代码版本控制系统 (Git Repo) | 持久化版本快照、分支管理与提交审计记录。 | **不可逆业务副作用 (Irreversible Side-effect)** | `系统` $\to$ 状态暂存与提交 [Git CLI over SSH] $\to$ `Git 服务` | 基础设施平台服务 (Out-of-Scope) |
+| **外部系统** | 规范与模板资产库 (Templates) | 集中管理标准架构技能清单、工件模板及评分规则库。 | 只读探查 (Read-only Probe) / 零副作用 | `系统` $\to$ 调阅规约与评分规则 [POSIX I/O] $\to$ `模板库` | 资产维护团队 (Out-of-Scope) |
+| **外部系统** | 现代 Web 浏览器引擎 | 提供离线或在线查看 `architecture_board.html` 的图形化呈现支持。 | 客户端呈现 / 零副作用 | `系统` $\to$ 静态看板文件 [HTML5/JS/Mermaid] $\to$ `浏览器` | 客户端渲染终端 (Out-of-Scope) |
 
 ---
 
@@ -62,7 +80,7 @@ flowchart TD
 
 ### 3.1 “X 射线”违规测试 (The X-Ray Test)
 - **检验结论**: **PASS (通过)**。
-- **排查说明**: 经严格审查，本图中的中心系统对外表现为**唯一的单一黑盒节点**，彻底剔除了所有状态机调度器（`FSMOrchestrator`）、门禁守卫（`Gatekeeper`）、图元渲染器（`DiagramRenderer`）与文档打磨引擎（`DocumentPolisher`）等内部微模块，确保业务高管与架构师宏观审视工具链与外部世界的生态位关系。
+- **排查说明**: 经自查，本图中的中心系统对外表现为**唯一的单一黑盒节点**，杜绝暴露任何内部调度状态机（`FSMOrchestrator`）、门禁守卫（`Gatekeeper`）、图元渲染器（`DiagramRenderer`）与打磨引擎（`DocumentPolisher`）内部类或私有模块，确保宏观审视套件与外部环境的生态位关系。
 
 ### 3.2 责任切割测试 (The "Who owns this?" Test)
 - **检验结论**: **PASS (通过)**。
@@ -76,13 +94,26 @@ flowchart TD
 
 ---
 
-## 4. 从上下文图到 AOD 的关键过渡 (Zooming In)
+## 4. Agent 爆炸半径沙盘检验记录 (Blast Radius Walkthrough)
+
+> **检验目的**: 针对 Agent AI 系统概率推理与自主工具调用特性，推演极端异常场景下的截断隔离机制。
+
+1. **失控代码/指令物理截断测试 (Runaway Execution Interception)**:
+   - **推演场景**: 模型产生严重幻觉或遭遇 Prompt 注入攻击，生成了递归删除工作区或恶意越权脚本。
+   - **防护闭环**: 上下文图中明确设立了受控工具执行沙箱（Tool Sandbox）与专职仲裁人（Human Approver / ARB）。所有编译与测试命令必须在沙箱子进程内受限执行；任何涉及代码提交与外部发布的写操作，必须经由仲裁员签字授权，绝不直连生产分支。
+2. **模型故障与 429 频控熔断演练 (429 Rate Limit & Fallback Walkthrough)**:
+   - **推演场景**: 外部主选推理基座（Claude API）突发 429 频控阻断或云端网络超时。
+   - **防护闭环**: 上下文图明确配置了备用模型基座（Gemini LLM Provider）与确定性降级规则，系统自动无缝切换备选模型继续推进，保障架构生命周期平稳流转。
+
+---
+
+## 5. 从上下文图到 AOD 的关键过渡 (Zooming In)
 
 > **“当前系统上下文图（Level 0）处于万米高空视角，聚焦于‘系统大楼外观及外部生态公路网络’（纯黑盒）。当下一步无人机穿透大楼屋顶时，将正式进入 AOD（Architecture Overview Diagram，架构概览图），展开大楼内部的‘调度中枢（FSM 编排引擎）’、‘质量安检大厅（Gatekeeper 门禁与 Polisher 打磨器）’、‘可视化投影中心（Board 看板渲染器）’与‘规范法典库（标准技能与模板集）’的白盒全景结构。”**
 
 ---
 
-## 5. 责任边界签署 (Boundary Sign-off)
+## 6. 责任边界签署 (Boundary Sign-off)
 - **平台主导架构师**: APPROVED (确认系统绝对边界与纯黑盒法则)
 - **技术评审委员会**: APPROVED (确认外部系统交互契约与责任切割)
 - **签署生效日期**: 2026-09-18

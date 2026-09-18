@@ -389,6 +389,33 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("系统上下文缺少三道安检门检验记录或向 AOD 缩放过渡说明 (Zooming In)")
 
+            # Agent AI 专属深度审计 (若识别为 Agent/AI 范式系统)
+            is_agent_context = bool(re.search(r"(Agent|智能体|大模型|LLM|推理网关|Tool Sandbox|Prompt)", content, re.IGNORECASE))
+            if is_agent_context:
+                # 1. 模型基座显性化与降级兜底检查
+                has_model_dep = bool(re.search(r"(模型基座|LLM|Foundation Model|推理网关|模型提供方)", content, re.IGNORECASE))
+                if not has_model_dep:
+                    score -= 10
+                    suggestions.append("Agent 系统上下文未显性标注模型基座提供方 (Foundation Model / LLM Provider) 及其主备降级链路")
+
+                # 2. 受控工具执行沙箱与副作用界限检查
+                has_sandbox_or_sideeffect = bool(re.search(r"(沙箱|Sandbox|副作用|Side-effect|只读探查|Read-only Probe)", content, re.IGNORECASE))
+                if not has_sandbox_or_sideeffect:
+                    score -= 10
+                    suggestions.append("Agent 系统上下文缺少受控工具沙箱 (Tool Sandbox) 或未显式标注交互副作用 (只读探查 vs 不可逆副作用)")
+
+                # 3. 人机协同角色分离检查 (发起人 vs 审批人/HITL)
+                has_hitl_split = bool(re.search(r"(HITL|人机协同|审批人|仲裁员|Supervisor|Approver|人工介入)", content, re.IGNORECASE))
+                if not has_hitl_split:
+                    score -= 10
+                    suggestions.append("Agent 系统上下文未对自然人进行人机协同角色分离 (缺少专职审批人/仲裁员 Human Approver 或 HITL 兜底回路)")
+
+                # 4. Agent 爆炸半径沙盘检验记录 (Blast Radius Walkthrough)
+                has_blast_radius = bool(re.search(r"(爆炸半径|Blast Radius|沙盘|失控指令|429.*限流|Prompt.*注入)", content, re.IGNORECASE))
+                if not has_blast_radius:
+                    score -= 10
+                    suggestions.append("Agent 系统上下文缺少'Agent 爆炸半径沙盘检验记录' (Blast Radius Walkthrough: 恶意失控指令截断与模型宕机降级)")
+
         # 12. Architectural Style Selection 专属规范深度审计 (IBM 骨骼结构与宏观模式选型标准)
         is_style_file = "architectural-style" in file_path.name.lower() or "style-selection" in file_path.name.lower()
 
