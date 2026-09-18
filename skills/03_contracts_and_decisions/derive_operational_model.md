@@ -65,7 +65,49 @@ IBM 方法论严格要求 OM 经历从**逻辑执行环境**到**物理基础设
 
 ---
 
-## 3. 经典交付物规范：节点规范卡片 (Node Specification)
+## 3. Agent AI 时代的运行模型重构 (Physical OM Paradigm Shift)
+
+OM 是 Agent 时代发生**物理形变最大**的架构工件。Agent 系统从纯通用微服务集群演进为**包含边缘防御、CPU 业务编排、异构 GPU 推理池与高危沙箱隔离区**的复合拓扑：
+
+```
+[ 外部互联网 / 客户端 ]
+          │ (HTTPS / WSS)
+          ▼
+[ 边缘接入区 DMZ: API Gateway & Guardrail WAF ] ────► 执行 Prompt 注入实时过滤
+          │
+          ▼
+[ 核心业务计算区 (K8s / CPU Nodes) ]
+  • Agent 编排服务集群 (Stateless Pods, 配置 HPA)
+  • 语义缓存与状态服务 (Redis Enterprise / Valkey 集群)
+  • 记忆检索层 (pgvector / Qdrant 向量计算节点)
+          │
+          ├─────────────────────────────────────────┐
+          │ (受控 mTLS 专线)                        │ (严格隔离 RPC 管道)
+          ▼                                         ▼
+[ 独立推理区 (GPU Serving Nodes) ]       [ 动态计算沙箱隔离区 (Sandbox Zone) ]
+  • vLLM / TensorRT-LLM 集群              • 极简微虚机 / 安全容器 (Firecracker / gVisor)
+  • 裸金属/GPU 节点 (A100/H100/L40S)       • 运行 Agent 动态生成的 Bash / Python 代码
+  • 专用 RoCE / InfiniBand 低延迟互联     • 零公网出站权限、瞬时销毁、文件系统写透即弃
+```
+
+### 3.1 三大核心物理环境新要求
+1. **隔离执行沙箱区 (Isolated Execution Sandbox Zone)**:
+   - **物理形态**: 严禁在业务宿主机或主 K8s 集群中直接运行 Agent 生成的动态代码。必须采用基于 MicroVM（如 AWS Firecracker、Kata Containers）或轻量级安全容器（如 gVisor、E2B）的专用沙箱池。
+   - **网络与存储策略**: 沙箱施加**严格的出站网络限制（Egress Network Policy）**，默认断开公网出站，文件系统写透即弃（Ephemeral Filesystem），秒级销毁重建。
+2. **异构算力与显存规划 (Heterogeneous Sizing)**:
+   - 明确物理划分 **CPU 逻辑编排节点** 与 **GPU 模型推理节点**。
+   - 自建模型推理节点需针对 GPU 显存带宽、持续批处理调度器（Continuous Batching）以及 OOM 显存耗尽时的主机队列背压制定硬指标。
+3. **长连接与流式通道规划 (Streaming Infrastructure)**:
+   - Agent 单轮复杂推理耗时达数秒至数十秒，传统短连接易频繁超时。OM 必须全面升级为**支持 WebSocket / HTTP-2 SSE 流式传输的长连接网关拓扑**，Keep-Alive 超时时间从秒级放宽至分钟级，并配备断线无损恢复机制（Resume Stream）。
+
+### 3.2 Agent OM 三维评判标准 (Evaluation Criteria)
+- **逃逸防御拓扑测试 (Escape Containment Test)**: 当 Agent 在沙箱内执行高危指令（如 `rm -rf /`、网络端口扫描或异常加密脚本）时，物理网络与安全隔离机制能否在秒级销毁容器且完全不波及相邻主机？
+- **长连接雪崩与重连风暴评估 (Streaming Storm Resilience)**: 千级并发流式请求时，网关的并发连接数配额、文件描述符与内存开销是否经过测算？断线重连是否有防雪崩退避？
+- **冷启动与弹性伸缩时延 (Cold Start Sizing)**: 沙箱分配与弹性容器的冷启动延迟是否控制在数百毫秒以内？严禁因沙箱环境初始化过慢拖垮交互响应。
+
+---
+
+## 4. 经典交付物规范：节点规范卡片 (Node Specification)
 
 每个核心计算节点、存储节点或集群必须配有一张标准节点规范卡片：
 
@@ -81,13 +123,15 @@ IBM 方法论严格要求 OM 经历从**逻辑执行环境**到**物理基础设
 
 ---
 
-## 4. 检验 OM 是否合格的“压力实战测试”
+## 5. 检验 OM 是否合格的“四大压力实战测试”
 
-在评审会前，架构师必须通过以下 3 项实战场景自检：
+在评审会前，架构师必须通过以下实战场景自检：
 
 1. **拔电源测试 (Chaos / Failure Scenario Test)**:
    - 架构师在 OM 图上圈死一个机房、一台核心主服务器或一条光纤专线，推演接下来的 30 秒内：心跳如何感知、流量如何切换、数据状态机如何防脑裂？
 2. **容量与成本测试 (Cost & Sizing Walkthrough)**:
-   - 将 OM 上的硬件机型、CPU/内存/磁盘配额与网络专线拉取清单，财务与 SRE 团队能否据此直接计算出精准的年度基础设施预算（CAPEX / OPEX）？
+   - 将 OM 上的硬件机型、CPU/内存/GPU 显卡配额与专线拉取清单，财务与 SRE 团队能否据此直接计算出年度基础设施预算（CAPEX / OPEX）？
 3. **运维与可观测测试 (Operational Readiness)**:
-   - 运维团队查看该图，能否一眼看出监控探针（Agent）、日志收集器（Log Shipper）、硬件时间戳网卡应挂载在哪些节点与网络通道上？
+   - 运维团队查看该图，能否一眼看出监控探针（Agent）、日志收集器（Log Shipper）、硬件时钟网卡应挂载在哪些节点与网络通道上？
+4. **沙箱逃逸与长连接抗压测试 (Sandbox & Streaming Test)**:
+   - 推演沙箱失控容器秒级销毁与千万级 Token 吞吐下长连接网关内存稳定性，验证网络隔离与冷启动指标达标。

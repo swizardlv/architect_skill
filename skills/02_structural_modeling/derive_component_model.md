@@ -66,7 +66,39 @@ IBM 方法论严格要求 CM 经历从**逻辑设计**到**物理实现**的平�
 
 ---
 
-## 3. 标准交付物：组件规范卡片 (Component Specification)
+## 3. Agent AI 时代的组件模型重构 (Agent-Native CM Components)
+
+传统 CM 拆分以“业务子领域”为主，而 Agent 架构则必须显式引入**处理非确定性推理、上下文吞吐与工具安全隔离的专用中间件组件**：
+
+### 3.1 五大 Agent 核心新增逻辑组件
+1. **COMP-CTX: 上下文优化与修剪中间件 (Context Pruning & Assembly Middleware)**:
+   - **核心职责**: 管理 LLM 上下文窗口预算。在多轮 ReAct 重试循环中，动态修剪无用堆栈追踪（Stack Trace Pruning）、执行代码增量 Diff、维护失败尝试记录（Negative Hypothesis Ledger），严格遏制 Token 膨胀。
+   - **提供接口**: `IContextAssembler.buildPrompt(sessionId, currentStep, maxTokenBudget)`
+   - **依赖接口**: `IMemoryStore`, `ISessionCache`
+2. **COMP-ROUTER: 认知意图与模型路由器 (Cognitive Router)**:
+   - **核心职责**: 分析任务复杂度与 Token 预算，动态选择执行路径（直接规则答复、调用轻量模型处理、或激活深度思考推理模型集群）。
+   - **提供接口**: `IIntentRouter.route(userIntent, constraints)`
+   - **依赖接口**: `IRuleEngine`, `ISmallModelClassifier`
+3. **COMP-TOOL: 语义工具适配与防腐代理 (Tool Facade & ACL)**:
+   - **核心职责**: 将企业复杂 API 转换为 LLM 友好的 JSON Schema 声明；对模型生成的调用参数执行强类型静态校验（Pydantic 模式），防止参数幻觉；执行权限校验与幂等性保障。
+   - **提供接口**: `IToolExecutor.invokeTool(toolName, validatedPayload)`
+   - **依赖接口**: `IAuthorizationPolicy`, `IIdempotencyStore`, `IEnterpriseLegacyApi`
+4. **COMP-STATE: 确定性认知状态机 (Deterministic Cognitive State Machine)**:
+   - **核心职责**: 基于有向状态图驱动 Agent 步骤演进。严格执行最大步数熔断（如最多循环 10 次）、状态原子持久化、支持“中断-人工介入审批-恢复（Interrupt & Resume）”。
+   - **提供接口**: `IStateMachineOrchestrator.transition(stepEvent)`
+   - **依赖接口**: `ITrajectoryStore`, `IHITLApprovalHub`
+5. **COMP-GATEWAY: 统一模型网关 (LLM Inference Gateway)**:
+   - **核心职责**: 抹平不同商业模型与本地开源推理服务的协议差异；提供语义缓存（Semantic Cache）、速率限制（Rate Limiting）、熔断降级与负载均衡。
+   - **提供接口**: `IModelGateway.generateCompletion(standardPrompt)`
+   - **依赖接口**: `IModelProviderAdapter`, `ISemanticCacheStore`
+
+### 3.2 Agent CM 评判标准 (Evaluation Criteria)
+- **契约防护测试 (Prompt & Schema Contract)**: 组件对外暴露的 Tool 绝不能依赖模糊的自然语言描述，必须具备严格的输入/输出 **JSON Schema** 强契约与类型校验机制。
+- **无状态与状态外置原则 (Stateless Orchestration)**: 负责推理编排的 Agent 服务本身必须是无状态的（Stateless），所有执行轨迹、上下文历史与未完成状态必须集中持久化在外部存储，以支撑任意单步的横向扩缩容与故障接管。
+
+---
+
+## 4. 标准交付物：组件规范卡片 (Component Specification)
 
 每个关键组件都必须具备一份标准组件规范卡片：
 
@@ -83,13 +115,15 @@ IBM 方法论严格要求 CM 经历从**逻辑设计**到**物理实现**的平�
 
 ---
 
-## 4. 检验 CM 是否合格的“三道防线”
+## 5. 检验 CM 是否合格的“四道防线”
 
-在架构交付评审前，必须通过以下“三道防线”自检：
+在架构交付评审前，必须通过以下自检：
 
 1. **外包/团队分配测试 (Team Allocation Test)**:
    - 若将这套 CM 分解为不同组件交付物交给不同的敏捷小组或外包团队开发，各小组能否仅凭**组件职责与接口契约**独立启动编码，而无需频繁开会同步内部实现细节？
 2. **变更隔离测试 (Change Impact Test)**:
    - 假设某一组件内部的业务逻辑或存储方案发生重大重构（如算法优化或数据库换型），其他组件是否完全不被波及？若改动一个组件导致全链路接口发生级联修改，说明边界切分失败。
 3. **OM 衔接测试 (Operational Readiness Test)**:
-   - 拿到物理 CM 后，运维与基础设施架构师（SRE）能否据此清晰推导其所需的容器实例规模、CPU/内存配置、网络拓扑与存储分级？若无法推导，说明物理 CM 缺失运行时关键特征。
+   - 拿到物理 CM 后，运维与基础设施架构师（SRE）能否据此清晰推导其所需的容器实例规模、CPU/内存配置、网络拓扑与存储分级？
+4. **Agent 契约与无状态测试 (Agent Contract & Statelessness Test)**:
+   - 检查 Agent 编排组件是否做到了自身完全无状态、所有工具调用是否具备显式 JSON Schema 校验以及死循环熔断保护？未能满足者驳回重构。

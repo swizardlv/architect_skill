@@ -110,6 +110,24 @@ class ArchitectureDocumentPolisher:
                     score -= 10
                     suggestions.append("AOD 缺少合格性 '3 分钟压力测试' (The 3-Minute Test) 评审自检表")
 
+            # Agent AI 专属 AOD 深度审计 (快慢思考路由、安全围栏 Guardrails、HITL 逃生通道)
+            is_agent_aod = bool(re.search(r"(Agent|智能体|认知路由|Intent Triage|LLM Gateway|Tool Sandbox|Prompt 注入)", content, re.IGNORECASE))
+            if is_agent_aod:
+                has_fast_slow = bool(re.search(r"(快慢思考|Fast-Slow|System 1|意图分流|Intent Triage|规则拦截)", content, re.IGNORECASE))
+                if not has_fast_slow:
+                    score -= 10
+                    suggestions.append("Agent AOD 缺少'快慢思考意图分流层' (Intent Triage: 规则/小模型拦截 vs 深度推理分流)")
+
+                has_guardrails = bool(re.search(r"(Guardrail|安全围栏|PII|Prompt.*注入|脱敏)", content, re.IGNORECASE))
+                if not has_guardrails:
+                    score -= 10
+                    suggestions.append("Agent AOD 横切底座缺少显式'安全围栏 (Guardrails: Prompt 注入防护与 PII 脱敏)'")
+
+                has_hitl_escape = bool(re.search(r"(HITL|人机协同|审批挂起|人工接管|Escalation)", content, re.IGNORECASE))
+                if not has_hitl_escape:
+                    score -= 10
+                    suggestions.append("Agent AOD 缺少'人机协同 (HITL) 逃生通道' (低置信度与高危写操作人工审批闭环)")
+
         # 5. CM (Component Model) 专属规范深度审计 (IBM 标准: 逻辑/物理双层演进与契约优先)
         if "component-model" in file_path.name.lower():
             # 检查是否包含逻辑与物理双层演进
@@ -132,12 +150,26 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("CM 缺少组件领域数据排他性所有权归属 (Data Ownership Matrix)")
 
-            # 检查是否有三道防线自检
+            # 检查是否有三道/四道防线自检
             if file_path.suffix.lower() == ".md":
-                has_three_defenses = bool(re.search(r"(三道防线|Team Allocation|团队分配|变更隔离)", content, re.IGNORECASE))
-                if not has_three_defenses:
+                has_defenses = bool(re.search(r"(防线|Team Allocation|团队分配|变更隔离)", content, re.IGNORECASE))
+                if not has_defenses:
                     score -= 10
-                    suggestions.append("CM 缺少 '三道防线' (团队分配测试、变更隔离测试、OM衔接测试) 评审自检表")
+                    suggestions.append("CM 缺少防线评审自检表 (团队分配、变更隔离、OM衔接、Agent契约无状态测试)")
+
+            # Agent AI 专属 CM 深度审计 (上下文修剪、语义工具代理、确定性状态机、统一模型网关)
+            is_agent_cm = bool(re.search(r"(Agent|智能体|COMP-CTX|COMP-TOOL|COMP-STATE|COMP-GATEWAY|Context Pruning|JSON Schema)", content, re.IGNORECASE))
+            if is_agent_cm:
+                has_agent_core_comps = bool(re.search(r"(COMP-CTX|COMP-TOOL|COMP-STATE|COMP-GATEWAY|COMP-ROUTER)", content))
+                if not has_agent_core_comps:
+                    score -= 15
+                    suggestions.append("Agent CM 缺少核心认知与隔离中间件组件定义 (COMP-CTX, COMP-TOOL, COMP-STATE, COMP-GATEWAY)")
+
+                has_schema_and_stateless = bool(re.search(r"(JSON Schema|Schema|Pydantic)", content, re.IGNORECASE)) and \
+                                           bool(re.search(r"(无状态|Stateless)", content, re.IGNORECASE))
+                if not has_schema_and_stateless:
+                    score -= 10
+                    suggestions.append("Agent CM 缺少'工具强类型 Schema 契约校验'或'编排组件完全无状态 (Stateless)'硬指标")
 
         # 6. OM (Operational Model) 专属规范深度审计 (IBM 标准: 逻辑/物理运行拓扑、CM映射与容灾)
         if "operational-model" in file_path.name.lower() or "deployment-model" in file_path.name.lower():
@@ -172,6 +204,19 @@ class ArchitectureDocumentPolisher:
                 if not has_stress_test:
                     score -= 10
                     suggestions.append("OM 缺少合格性 '压力实战测试' (拔电源演练、容量成本测算、运维可观测性就绪) 记录")
+
+            # Agent AI 专属 OM 深度审计 (代码沙箱隔离区、异构 GPU/CPU 拓扑、逃逸防御与长连接流式测试)
+            is_agent_om = bool(re.search(r"(Agent|智能体|Sandbox|沙箱|GPU|H100|vLLM|Firecracker|gVisor|MicroVM|流式|WSS)", content, re.IGNORECASE))
+            if is_agent_om:
+                has_sandbox_zone = bool(re.search(r"(沙箱隔离|Sandbox Zone|MicroVM|Firecracker|gVisor|安全容器)", content, re.IGNORECASE))
+                if not has_sandbox_zone:
+                    score -= 15
+                    suggestions.append("Agent OM 缺少独立的'动态代码执行沙箱隔离区' (Sandbox Zone: MicroVM/安全容器池，默认断网)")
+
+                has_escape_test = bool(re.search(r"(逃逸|Escape|沙箱销毁|长连接|重连风暴|Cold Start|冷启动)", content, re.IGNORECASE))
+                if not has_escape_test:
+                    score -= 10
+                    suggestions.append("Agent OM 缺少'沙箱逃逸防御测试 (Escape Containment)'或'流式长连接雪崩与冷启动时延评估'")
 
         # 7. AD/ADR (Architecture Decision Record) 专属规范深度审计 (IBM 标准: 权衡闭环、多方案与代价缓解)
         is_adr_file = (

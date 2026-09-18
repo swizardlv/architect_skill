@@ -10,30 +10,40 @@
 flowchart TD
     %% 样式表定义
     classDef logicalComp fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a;
-    classDef interfaceNode fill:#ffffff,stroke:#0284c7,stroke-width:1px,stroke-dasharray: 2 2,color:#0369a1;
+    classDef middlewareComp fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#701a75;
+    classDef sandboxComp fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#78350f;
 
-    subgraph LayerIngress ["接入层组件 (Ingress Tier)"]
-        CompGateway["COMP-01: 接入适配组件<br/>(Ingress Adapter)"]:::logicalComp
+    subgraph LayerIngress ["通道与接入组件 (Ingress Tier)"]
+        CompGateway["COMP-01: 边缘流式接入组件<br/>(Ingress Gateway & WSS Stream)"]:::logicalComp
     end
 
-    subgraph LayerCore ["核心能力层组件 (Core Domain Tier)"]
+    subgraph LayerCognition ["认知编排与控制组件 (Cognitive Orchestration Tier)"]
         direction TB
-        CompRisk["COMP-02: 实时风控组件<br/>(Risk Filter)"]:::logicalComp
-        CompSeq["COMP-03: 仲裁定序组件<br/>(Sequencer Engine)"]:::logicalComp
-        CompMatch["COMP-04: 业务撮合核心组件<br/>(Matching Core)"]:::logicalComp
+        CompRouter["COMP-ROUTER: 认知意图与快慢路由器<br/>(Cognitive Intent Router)"]:::middlewareComp
+        CompState["COMP-STATE: 确定性认知状态机<br/>(Deterministic StateGraph Core)"]:::middlewareComp
+        CompCtx["COMP-CTX: 上下文优化与修剪中间件<br/>(Context Pruner & Assembly Hub)"]:::middlewareComp
     end
 
-    subgraph LayerEgress ["分发与持久化组件 (Egress Tier)"]
-        CompDispatch["COMP-05: 事件分发组件<br/>(Event Dispatcher)"]:::logicalComp
-        CompLedger["COMP-06: 账本持久化组件<br/>(Ledger Store)"]:::logicalComp
+    subgraph LayerTooling ["工具网关与沙箱执行组件 (Tool & Sandbox Tier)"]
+        direction TB
+        CompTool["COMP-TOOL: 语义工具适配与防腐代理<br/>(Tool Facade & Schema Validator)"]:::sandboxComp
+        CompSandbox["COMP-EXEC: 隔离沙箱驱动组件<br/>(Isolated Sandbox Driver)"]:::sandboxComp
+    end
+
+    subgraph LayerInference ["模型中继与存储组件 (Inference & Memory Tier)"]
+        direction LR
+        CompModel["COMP-GATEWAY: 统一模型中继网关<br/>(LLM Gateway & Semantic Cache)"]:::middlewareComp
+        CompMemory["COMP-MEM: 分层记忆存储中间件<br/>(Tiered Memory Store)"]:::logicalComp
     end
 
     %% 接口暴露与依赖连线 (无环有向图 DAG)
-    CompGateway -->|"依赖: IRiskValidation"| CompRisk
-    CompRisk -->|"依赖: ISequenceAllocation"| CompSeq
-    CompSeq -->|"依赖: IExecutionSubmit"| CompMatch
-    CompMatch -->|"依赖: IEventPublish"| CompDispatch
-    CompDispatch -->|"依赖: ILedgerAppend"| CompLedger
+    CompGateway -->|"依赖: IIntentRouter"| CompRouter
+    CompRouter -->|"依赖: IStateMachineOrchestrator"| CompState
+    CompState <-->|"依赖: IContextAssembler"| CompCtx
+    CompCtx <-->|"依赖: IMemoryStore"| CompMemory
+    CompState -->|"依赖: IModelGateway"| CompModel
+    CompState -->|"依赖: IToolExecutor"| CompTool
+    CompTool -->|"依赖: ISandboxExecution"| CompSandbox
 ```
 
 ---
@@ -44,57 +54,75 @@ flowchart TD
 flowchart TD
     %% 物理构件样式
     classDef binPkg fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a;
-    classDef storagePkg fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef protocolLink fill:#ffffff,stroke:#64748b,stroke-width:1px,color:#475569;
+    classDef containerPkg fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a;
+    classDef sandboxPkg fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#78350f;
 
     subgraph PhysicalArtifacts ["运行时部署构件 (Physical Deployment Packages)"]
-        PkgGW["ingress-gateway (用户态可执行文件)<br/>[协议: EF_VI / SBE Binary]"]:::binPkg
-        PkgCore["matching-core.so (C++ 独占绑核动态库)<br/>[通信: 无锁 SPSC RingBuffer]"]:::binPkg
-        PkgEgress["market-broadcaster (独立守护进程)<br/>[协议: UDP Multicast / ITCH 5.0]"]:::binPkg
-        PkgStorage["ledger-daemon (直接I/O落盘进程)<br/>[存储: NVMe O_DIRECT WAL]"]:::storagePkg
+        PkgGateway["agent-ingress-proxy (Go 编写 / Envoy 基础)<br/>[协议: WSS / HTTP-2 SSE 流式通道]"]:::containerPkg
+        PkgOrchestrator["agent-orchestrator-core (无状态 Python/FastAPI Pod)<br/>[内存通信: 本地异步队列 + 外部 Redis 快照]"]:::containerPkg
+        PkgContextLib["context-pruning-engine (Rust 编写 C-ABI 扩展动态库)<br/>[功能: 纳秒级 Token 计数与 AST 增量 Diff]"]:::binPkg
+        PkgToolProxy["tool-acl-gateway (Node.js 强类型 Schema 验证微服务)<br/>[协议: gRPC over mTLS / JSON Schema]"]:::containerPkg
+        PkgMicroVM["firecracker-sandbox-pool (微虚机/安全容器池)<br/>[环境: gVisor/MicroVM 零公网写透即弃]"]:::sandboxPkg
     end
 
-    PkgGW ==>|"SPSC 内存环形总线"| PkgCore
-    PkgCore ==>|"事件输出总线"| PkgEgress
-    PkgCore ==>|"直接 I/O 环形写入"| PkgStorage
+    PkgGateway ==>|"gRPC 双向流式通信"| PkgOrchestrator
+    PkgOrchestrator ==>|"本地进程内 C-FFI 绑定"| PkgContextLib
+    PkgOrchestrator ==>|"受控内部 RPC 调用"| PkgToolProxy
+    PkgToolProxy ==>|"专用隔离通信通道 (vsock/unix-socket)"| PkgMicroVM
 ```
 
 ---
 
 ## 3. 核心组件规范卡片集 (Component Specifications)
 
-### 3.1 COMP-01: 接入适配组件 (Ingress Adapter)
-| 规范要素 | 内容说明 |
+### 3.1 COMP-CTX: 上下文优化与修剪中间件 (Context Pruner & Assembly)
+| 规范要素 | 架构内容说明 |
 | :--- | :--- |
-| **组件标识** | `COMP-01: Ingress Adapter` |
-| **组件类型** | 边界通信组件（自研） |
-| **核心职责** | 终结网络连接，解析客户端报文，完成防重放时间戳校验 |
-| **提供接口 (Provided)**| `IIngressSession (connect, disconnect, receivePacket)` |
-| **依赖接口 (Required)**| `IRiskValidation (validateOrder), ISequenceAllocation (submitOrder)` |
-| **质量属性/NFR 要求** | 单包反序列化延迟 ≤ 300ns；吞吐量 ≥ 2,000,000 ops/s；无锁设计 |
-| **数据所有权 (Ownership)**| 独占管理外部会话连接描述符表与会话状态 |
-| **物理技术映射** | C++ 纯轮询用户态驱动进程，通过连续定长内存池分配报文 |
+| **组件标识** | `COMP-CTX: 上下文优化与修剪中间件` |
+| **组件类型** | 核心认知中间件组件（自研） |
+| **核心职责** | 监控 Token 预算，在多轮重试循环中动态修剪无用堆栈追踪（Stack Trace Pruning）、执行代码增量 Diff，维护负向假设账本 |
+| **提供接口 (Provided)**| `IContextAssembler (buildPrompt, pruneContextWindow, appendNegativeHypothesis)` |
+| **依赖接口 (Required)**| `IMemoryStore (fetchLongTermMemory), ISessionCache (getStepHistory)` |
+| **质量属性/NFR 要求** | 单次上下文组装延迟 ≤ 15ms；Token 冗余消除率 ≥ 60%；完全无状态 |
+| **数据所有权 (Ownership)**| 独占管理当前认知轮次的即时上下文组装缓冲区 |
+| **物理技术映射** | 嵌入在 Agent 编排容器内的 Rust 预编译扩展模块，无本地持久化状态 |
+
+### 3.2 COMP-TOOL: 语义工具适配与防腐代理 (Tool Facade & ACL)
+| 规范要素 | 架构内容说明 |
+| :--- | :--- |
+| **组件标识** | `COMP-TOOL: 语义工具适配与防腐代理` |
+| **组件类型** | 边界安全与防腐组件（自研） |
+| **核心职责** | 暴露 JSON Schema 工具声明；基于 Pydantic 执行参数强类型静态校验；实施权限隔离与幂等性保证 |
+| **提供接口 (Provided)**| `IToolExecutor (invokeTool, queryToolManifest)` |
+| **依赖接口 (Required)**| `ISandboxDriver (runIsolatedScript), ILegacyApi (invokeEnterpriseService)` |
+| **质量属性/NFR 要求** | 拦截 100% 格式非法参数；工具参数验证时延 ≤ 5ms；操作具备幂等重试保护 |
+| **数据所有权 (Ownership)**| 独占管理工具 Schema 注册表与幂等性令牌记录 |
+| **物理技术映射** | 独立运行的轻量级 gRPC 微服务容器，提供严苛的输入防御契约 |
 
 ---
 
 ## 4. 核心架构场景动态时序验证 (Component Sequence Diagrams)
 
-### 场景一：常规业务黄金调用链路 (Happy Path)
+### 场景一：工具调用、参数校验与沙箱执行链路 (Happy Path)
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GW as COMP-01: Ingress
-    participant Risk as COMP-02: Risk
-    participant Seq as COMP-03: Sequencer
-    participant Core as COMP-04: Matching Core
-    participant Dispatch as COMP-05: Dispatcher
+    participant Orch as COMP-STATE: 状态编排器
+    participant Ctx as COMP-CTX: 上下文修剪
+    participant Model as COMP-GATEWAY: 模型网关
+    participant Tool as COMP-TOOL: 工具防腐代理
+    participant Sand as COMP-EXEC: 隔离沙箱
 
-    GW->>Risk: validateOrder(OrderRequest)
-    Risk-->>GW: ValidationResult(Approved)
-    GW->>Seq: submitOrder(OrderRequest)
-    Seq->>Core: executeOrder(SequencedOrder)
-    Core->>Dispatch: publishTradeEvents(ExecutionReport)
-    Dispatch-->>GW: notifyClient(Receipt)
+    Orch->>Ctx: buildPrompt(sessionId, currentStep)
+    Ctx-->>Orch: OptimizedPrompt(WithinTokenBudget)
+    Orch->>Model: generateCompletion(OptimizedPrompt)
+    Model-->>Orch: ToolCallPayload(action, rawParams)
+    Orch->>Tool: invokeTool(action, rawParams)
+    Tool->>Tool: validateSchema(PydanticStrict)
+    Tool->>Sand: executeInSandbox(validatedPayload)
+    Sand-->>Tool: ExecutionOutput(Observation)
+    Tool-->>Orch: ToolResponse(Observation)
+    Orch->>Ctx: appendStep(Thought, Action, Observation)
 ```
 
 ---
@@ -103,14 +131,16 @@ sequenceDiagram
 
 | 业务数据实体 / 资产 | 独占写入组件 (Exclusive Owner) | 只读消费组件 (Read-Only Consumers) | 持久化与存储模式 |
 | :--- | :--- | :--- | :--- |
-| **AccountBalance (账户资金)** | COMP-02: 实时风控组件 | Ingress, Admin | 内存预扣表 + WAL 镜像 |
-| **OrderBookDepth (盘口深度)** | COMP-04: 撮合核心组件 | Dispatcher, MarketBroadcaster | 纯内存红黑树与双向链表 |
-| **ClearingAuditLog (审计日志)** | COMP-06: 账本持久化组件 | External Audit, Analytics | NVMe 追加写日志文件 |
+| **CognitiveSession (会话状态)** | COMP-STATE: 状态机编排组件 | Gateway, HITL Center | 外部分布式 Redis / Postgres |
+| **ExecutionStep (单步执行轨迹)**| COMP-STATE: 状态机编排组件 | Telemetry, AuditDashboard | Append-only 轨迹数据库 |
+| **NegativeLedger (失败反思账本)**| COMP-CTX: 上下文修剪中间件 | StateMachine, Planner | 结构化会话持久化存储 |
+| **ToolManifest (工具 Schema)** | COMP-TOOL: 语义工具代理 | LLMGateway, Orchestrator | 代码声明与内存注册表 |
 
 ---
 
-## 6. CM 合格性“三道防线”评审自检记录
+## 6. CM 合格性“四道防线”评审自检记录
 
-- [ ] **防线一：外包/团队分配测试 (Team Allocation Test)**: 敏捷团队能否仅凭规范卡片中的 `Provided/Required` 接口独立开发？(合格)
-- [ ] **防线二：变更隔离测试 (Change Impact Test)**: 内部算法或存储重构是否不波及其他组件接口？(合格)
-- [ ] **防线三：OM 衔接测试 (Operational Readiness Test)**: SRE 能否依据物理 CM 直接推导部署拓扑与资源配置？(合格)
+- [x] **防线一：团队分配测试 (Team Allocation Test)**: 敏捷小组可仅凭 `Provided/Required` 接口签名与 JSON Schema 独立开发工具代理，无需同步内部实现。
+- [x] **防线二：变更隔离测试 (Change Impact Test)**: 调整底层代码沙箱实现（如从 Docker 切换为 Firecracker），仅影响 COMP-EXEC，上游业务完全不感知。
+- [x] **防线三：OM 衔接测试 (Operational Readiness Test)**: 运维团队可根据无状态编排器与隔离沙箱的物理组件定义，精确规划 Pod HPA 与 MicroVM 沙箱池。
+- [x] **防线四：Agent 契约与无状态测试 (Agent Contract & Statelessness Test)**: 编排服务本身完全无状态，全部工具参数实行强类型 Schema 校验，具备最大步数熔断控制。
