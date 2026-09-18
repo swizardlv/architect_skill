@@ -26,6 +26,7 @@ sys.path.insert(0, str(POLISHER_DIR))
 from manage_test_workspaces import archive_case_workspace, update_cases_index_readme
 from render_architecture_board import render_board
 from document_polisher import ArchitectureDocumentPolisher
+from scaffold_walking_skeleton import generate_walking_skeleton, run_tests
 
 
 def ensure_case_workspace(case_dir: Path) -> None:
@@ -42,6 +43,7 @@ def ensure_case_workspace(case_dir: Path) -> None:
         src_dir / "domain",
         src_dir / "ports",
         src_dir / "adapters",
+        src_dir / "services",
         tests_dir,
     ]:
         sub.mkdir(parents=True, exist_ok=True)
@@ -69,6 +71,16 @@ def evaluate_workspace(case_dir: Path) -> None:
     print(f"   已审查文档数: {len(reports)} 篇")
     print(f"   综合质量评分: {avg_score:.1f} 分 / 状态: {status_str}")
 
+    # 执行物理代码冒烟测试验证
+    tests_dir = case_dir / "tests"
+    if tests_dir.exists() and any(tests_dir.glob("test_*.py")):
+        print("\n🧪 [代码验证] 检测到自动化测试套件，执行冒烟测试 (pytest)...")
+        test_passed, test_out = run_tests(case_dir)
+        if test_passed:
+            print("   ✅ 案例物理测试通过 (PASS)")
+        else:
+            print(f"   ⚠️ 案例测试未通过:\n{test_out}")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -83,11 +95,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--action",
-        choices=["init", "audit", "archive", "all"],
+        choices=["init", "audit", "archive", "scaffold", "all"],
         default="all",
-        help="执行动作: init (仅建目录), audit (画板+质量审查), archive (快照归档), all (综合闭环流程)"
+        help="执行动作: init (仅建目录), audit (画板+质量审查+测试), scaffold (生成代码骨架), archive (快照归档), all (综合闭环流程)"
     )
     parser.add_argument("--no-archive", action="store_true", help="跳过对既有产物的自动归档")
+    parser.add_argument("--scaffold", action="store_true", help="显式自动调用 architecture-execution 生成 Walking Skeleton 物理代码与测试")
+    parser.add_argument("--overwrite-scaffold", action="store_true", help="强制覆盖已存在的脚手架代码")
 
     args = parser.parse_args()
     base_dir = Path(args.base_dir).resolve()
@@ -108,6 +122,11 @@ def main() -> None:
     if args.action in ("init", "all"):
         print(f"\n📁 确保案例标准目录体系就绪...")
         ensure_case_workspace(case_dir)
+
+    if args.action == "scaffold" or args.scaffold:
+        print(f"\n🏗️ [交付执行] 正在通过 architecture-execution 生成 Walking Skeleton 物理代码与冒烟测试...")
+        created = generate_walking_skeleton(case_dir, overwrite=args.overwrite_scaffold)
+        print(f"   已就绪 {len(created)} 个物理骨架文件")
 
     if args.action in ("audit", "all"):
         evaluate_workspace(case_dir)

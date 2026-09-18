@@ -18,10 +18,14 @@ description: "Use when scaffolding walking skeletons, executing architectural pr
 - 规划系统交付里程碑（Milestones）与迭代切片；
 - 建立工程代码规范、CI 门禁与自动化测试基线。
 
-## 核心交付物与模板
+## 核心交付物与工具
+ 
+ 1. **物理代码骨架生成工具**：`scripts/scaffold_walking_skeleton.py`
+    - 命令：`python3 skills/architecture-execution/scripts/scaffold_walking_skeleton.py <workspace_root> --run-test`
+    - 作用：自动将组件模型与契约转化为六边形架构的 `domain/`, `ports/`, `adapters/`, `services/` 源码骨架与自动化集成测试 `tests/`，并直接跑通冒烟验证。
+ 2. **PoC 实验章程与评估报告**：[poc-charter-and-report-template.md](templates/poc-charter-and-report-template.md)
+ 3. **交付组织架构与里程碑规划**：[organization-and-plan-template.md](templates/organization-and-plan-template.md)
 
-1. **PoC 实验章程与评估报告**：[poc-charter-and-report-template.md](templates/poc-charter-and-report-template.md)
-2. **交付组织架构与里程碑规划**：[organization-and-plan-template.md](templates/organization-and-plan-template.md)
 
 ## 执行步骤与检查清单
 

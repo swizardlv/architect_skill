@@ -4,8 +4,8 @@
   "description": "Architecture Thinking and Lifecycle Orchestration Engine for AI Coding Agents",
   "scripts": {
     "test": "pytest -v",
-    "compile": "python3 -m py_compile run.py scripts/manage_test_workspaces.py scripts/run_case_study.py scripts/orchestrate_architecture_lifecycle.py scripts/render_architecture_board.py skills/architecture-refinement/scripts/document_polisher.py skills/architecture-refinement/scripts/render_architecture_board.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py tests/test_skills_spec.py",
-    "lint": "python3 -m py_compile run.py scripts/manage_test_workspaces.py scripts/run_case_study.py scripts/orchestrate_architecture_lifecycle.py scripts/render_architecture_board.py skills/architecture-refinement/scripts/document_polisher.py skills/architecture-refinement/scripts/render_architecture_board.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py tests/test_skills_spec.py"
+    "compile": "python3 -m py_compile run.py scripts/manage_test_workspaces.py scripts/run_case_study.py scripts/orchestrate_architecture_lifecycle.py scripts/render_architecture_board.py scripts/scaffold_walking_skeleton.py skills/architecture-execution/scripts/scaffold_walking_skeleton.py skills/architecture-refinement/scripts/document_polisher.py skills/architecture-refinement/scripts/render_architecture_board.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py tests/test_skills_spec.py tests/test_scaffold_walking_skeleton.py",
+    "lint": "python3 -m py_compile run.py scripts/manage_test_workspaces.py scripts/run_case_study.py scripts/orchestrate_architecture_lifecycle.py scripts/render_architecture_board.py scripts/scaffold_walking_skeleton.py skills/architecture-execution/scripts/scaffold_walking_skeleton.py skills/architecture-refinement/scripts/document_polisher.py skills/architecture-refinement/scripts/render_architecture_board.py tests/test_fsm_orchestrator.py tests/test_diagram_renderer.py tests/test_skills_spec.py tests/test_scaffold_walking_skeleton.py"
   },
   "author": "swizard",
   "license": "MIT"
