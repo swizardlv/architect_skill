@@ -19,7 +19,7 @@ flowchart TD
 ### 形态 A：主控状态机联动驱动 (端到端推荐)
 这是推荐的标准化工作流。状态机负责把控流程、门禁和人工卡点，Agent 负责在每个阶段执行 Skill 的具体生成。
 1. 启动状态机：运行 `python run.py --step`，状态机会输出当前所处的阶段（例如 `GRILLING`）以及必须产出的目标文件路径。
-2. 调度执行：将对应阶段的 Skill Markdown（例如 `skills/01_grounding/grill_architecture_requirements.md`）作为 Prompt 喂给 Agent，由 Agent 与用户交互完成产出。
+2. 调度执行：将对应阶段的 Skill（例如 `skills/architecture-grounding/SKILL.md`）作为规范提供给 Agent，由 Agent 与用户交互完成产出。
 3. 门禁验证：产物落盘后再次执行 `python run.py --step`，状态机会自动执行门禁自检与人工审批判定，判定通过后单向跃迁至下一阶段。
 
 ### 形态 B：作为 Agent 专用 System Prompt / Skill 注入
@@ -27,10 +27,12 @@ flowchart TD
 - **在 Claude Code / Antigravity / 自研 Agent 中**：将 `skills/**/*.md` 文件路径配置为 Skill 或 Subagent 的 System Prompt。
 - **在 Cursor / Windsurf / Copilot 中**：在执行特定任务时，使用 `@grill_architecture_requirements.md` 引用该 Skill 作为对话上下文，AI 会自动变身为严苛的审问官或架构师。
 
-### 形态 C：独立单项使用 (离线 / 单点设计)
-无需启动整个生命周期，直接按需调用单个 Skill：
-- 需要为争议技术方案留痕？直接参考 `skills/03_contracts_and_decisions/record_architecture_decision.md` 并结合 `templates/adr-template.md` 产出 ADR。
-- 需要梳理系统外部接口？直接使用 `skills/02_structural_modeling/generate_system_context.md` 生成标准 Mermaid C4 图。
+### 形态 2：独立单点使用 (原子能力即插即用)
+
+如果你不需要走完完整生命周期，只是想单独执行某一具体任务：
+- 需要快速为业务制定 NFR 矩阵？直接使用 `skills/architecture-grounding/SKILL.md`。
+- 需要为争议技术方案留痕？直接参考 `skills/architecture-decisions/SKILL.md` 产出 ADR。
+- 需要梳理系统外部接口与全景图？直接使用 `skills/architecture-overview/SKILL.md` 生成标准 Mermaid 图纸。
 
 ---
 

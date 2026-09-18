@@ -1,142 +1,143 @@
-# 架构设计方法论与执行 Skill 工程体系 (Architect Skill)
+# Architect Skill (专业级 AI 架构师技能库)
 
-本项目基于“**确定性工程外壳 + 概率性推理内核 (Deterministic Shell + Stochastic Core)**”的方法论，将架构设计全生命周期的 12 个核心 Skill 原型沉淀为生产级可执行代码、Prompt 规范与模板工程。
+> An agentic skills framework & software architecture methodology for AI coding agents.
+
+对标并吸纳业界标杆 [`obra/superpowers`](https://github.com/obra/superpowers) 与 [agentskills.io](https://agentskills.io/specification) 标准规约，为 Claude Code、Antigravity、Codex、Gemini CLI 等 AI 编码 Agent 提供一套高内聚、微内核化、自举式驱动的软件架构设计与工程治理方法论。
 
 ---
 
-## 目录索引与工程结构
+## 核心设计哲学
+
+1. **先架构后编码 (Architecture Before Code)**：未经架构论证、非功能需求评估与质量属性约束的编码，是系统失控与架构退化的主因。
+2. **微内核自治封装 (Self-Contained Skills)**：每一个架构技能是一个自治目录（`skills/<name>/`），核心包含规范的 `SKILL.md`（带 SDO YAML Frontmatter），附属模板放于专属 `templates/`，脚本放于 `scripts/`。
+3. **SDO (Skill Discovery Optimization，技能发现优化)**：`description` 严格遵守以 `"Use when..."` 开头的触发契约，仅声明激活时机，避免 Agent 依赖概述产生跳步幻觉。
+4. **硬性执行门禁与心智红线 (Hard Gates & Red Flags)**：设置强拦截规则，阻断 Agent 擅自跳过架构设计、假装已完成的偷懒倾向。
+5. **双轨架构指标 (Dual-Track Architecture Requirements)**：不仅涵盖吞吐、并发与延迟等传统指标，更涵盖 Agent 时代的认知有效性（Cognitive Efficacy）、Token 经济学预算、安全围栏与确定性兜底。
+
+---
+
+## 技能库全景 (Skills Catalog)
 
 ```text
 skills/
-├── 00_orchestrator/
-│   ├── orchestrate_architecture_lifecycle.py   # 主控状态机驱动引擎 (FSM 调度实现)
-│   ├── fsm_config.json                         # 状态转移规则、门禁与路径配置
-│   └── README.md                               # 编排引擎运行说明与 CLI 命令
-├── 01_grounding/
-│   ├── grill_architecture_requirements.md      # 苏格拉底式审问 Prompt 与准出门禁
-│   ├── distill_nfr_matrix.md                   # NFR 度量矩阵提取 Prompt 与模板
-│   └── catalog_invariants_and_constraints.md   # 不变量与硬约束编目 Prompt 与模板
-├── 02_structural_modeling/
-│   ├── architecture_diagramming_principles.md  # 架构制图准则 (吸纳 Archify 语义与排版精髓)
-│   ├── generate_system_context.md              # C4 Context (L1) 建模 Prompt 与 Mermaid 规范
-│   ├── derive_logical_domain_model.md          # DDD 限界上下文与生命周期状态机 Prompt
-│   ├── synthesize_architecture_overview.md     # C4 Container (L2) 双环拓扑 Prompt
-│   └── generate_sequence_and_dataflow.md       # 交互调用时序与分级数据流建模 Prompt
-├── 03_contracts_and_decisions/
-│   ├── record_architecture_decision.md         # ADR 决策生成 Prompt (MADR 规范)
-│   ├── scaffold_boundary_contracts.md          # OpenAPI / JSON Schema 提取与验证 Prompt
-│   └── generate_failure_resilience_matrix.md   # FMEA 容灾降级矩阵 Prompt
-├── 04_execution_and_scaffolding/
-│   ├── bootstrap_walking_skeleton.md           # 工程物理骨架生成 Prompt
-│   └── sequence_delivery_milestones.md         # 敏捷里程碑与 First Step PoC Prompt
-├── 05_audit_and_evolution/
-│   ├── generate_case_study_and_archive.md      # 测试案例生成与历史版本归档器
-│   ├── audit_generated_architecture_assets.md  # 架构资产全方位技术审计器
-│   └── feedback_loop_orchestrator_evolver.md   # 评审问题反推与主控演进器
-templates/                                      # 产出文档的标准 Markdown / YAML 模板
-│   ├── nfr-matrix-template.md
-│   ├── constraints-template.md
-│   ├── adr-template.md
-│   ├── resilience-matrix-template.md
-│   └── agent-rules-template.md                 # 供 Vibe Coding 防跑偏的 .agent-rules 核心模板
-tests/
-│   └── test_fsm_orchestrator.py                # 针对主控状态机推进、卡点与拦截的单元测试
-├── docs/                                       # 架构文档与工程指南
-│   ├── architecture_engineering_handbook.md    # 架构落地手册
-│   └── architecture/                           # 架构资产工作空间及 .state.json 状态记录
-├── .agent-rules.md                             # 根目录防跑偏守则（契约只读/依赖倒置/自检闭环）
-└── run.py                                      # 启动交互式架构设计会话的入口脚本
+├── using-architect/                  # 自举引导元技能 (优先级、心智红线对照、路径分级与硬门禁)
+│   └── SKILL.md
+├── architecture-grounding/           # 架构需求锚定与度量 (商业愿景、NFR 矩阵、ARC 需求清单、约束编目)
+│   ├── SKILL.md
+│   └── templates/
+├── architecture-overview/            # 架构全景与风格决策 (系统上下文图、AOD 分层大图、风格决策)
+│   ├── SKILL.md
+│   └── templates/
+├── component-modeling/               # 组件模型与动态时序 (CM 组件边界、拓扑依赖、交互端口、时序与数据流)
+│   ├── SKILL.md
+│   └── templates/
+├── operational-modeling/             # 运行模型与系统韧性 (物理部署节点、网络分区、故障韧性矩阵、可观测性)
+│   ├── SKILL.md
+│   └── templates/
+├── conceptual-data-modeling/         # 概念数据模型与存储 (ER 实体图、物理 DDL 骨架、多模存储划分)
+│   ├── SKILL.md
+│   └── templates/
+├── boundary-contracts/               # 系统边界契约 (RESTful API、异步事件载荷、防腐适配层)
+│   ├── SKILL.md
+│   └── templates/
+├── architecture-decisions/           # 架构决策记录 (MADR 规范、AI 时代 6 大核心决策博弈)
+│   ├── SKILL.md
+│   └── templates/
+├── architecture-execution/           # 架构交付与实证验证 (Walking Skeleton 骨架贯通、靶向 PoC、里程碑编排)
+│   ├── SKILL.md
+│   └── templates/
+├── architecture-governance/          # 架构治理与评审 (ARB 评审网关、ATAM 效用树穿刺、合规扫描、技术债务台账)
+│   ├── SKILL.md
+│   └── templates/
+└── architecture-refinement/          # 架构文档精修与看板 (格式审查排版脚本、交互式 HTML 画板渲染引擎)
+    ├── SKILL.md
+    └── scripts/
 ```
 
 ---
 
-## 核心机制与三大防跑偏红线
+## 安装与多平台适配
 
-下游使用 Cursor、Windsurf、Claude Code 等 AI 编程助手进行 Vibe Coding 时，根目录的 `.agent-rules.md` 强制生效：
-1. **只读契约目录**：`docs/architecture/`、`04-contracts/` 与抽象端口定义只读，严禁在编码阶段反向篡改契约。
-2. **单向依赖倒置**：`domain/` 严禁引入具体框架、数据库 SDK 或网络适配器。
-3. **测试沙箱自检闭环**：代码提交前必须执行静态检查与测试，严禁修改既有测试以迎合错误实现。
-
----
-
-## 这些 Skill 到底怎么用？(实操使用方式)
-
-详细操作与人机协同流程请参阅专属指南：👉 **[docs/skill_usage_guide.md](docs/skill_usage_guide.md)**
-
-本项目提供三种灵活的使用形态：
-
-### 形态 1：主控状态机联动驱动 (推荐的端到端架构推导)
-由确定性 FSM 把控流程流转与门禁拦截，各阶段调用对应的 Skill 进行生成：
+### Antigravity
+作为插件从本地或 Git 仓库安装：
 ```bash
-# 1. 运行状态机，查看当前阶段（如 GRILLING）与要求产出的目标文件
-python run.py --step
+agy plugin install /path/to/architect_skill
+```
+Antigravity 会自动执行 `hooks/session-start`，在每次会话启动、清屏或压缩时自动注入 `using-architect` 引导上下文。
 
-# 2. 将当前阶段的 Skill（如 skills/01_grounding/grill_architecture_requirements.md）
-#    作为 Prompt 喂给 AI Agent 进行交互推演，产物保存至 docs/architecture/
-
-# 3. 产物落盘后，再次运行推进命令，状态机自动执行门禁自检与人机审核卡点（HITL）
-python run.py --step
+### Claude Code
+作为本地插件安装：
+```bash
+claude plugin add /path/to/architect_skill
 ```
 
-### 形态 2：作为 AI 辅助工具的 System Prompt / Skill 注入
-- **在 Cursor / Windsurf 中**：通过 `@grill_architecture_requirements.md` 引用对应 Skill，让 AI 严格按照 Prompt 规则对你进行苏格拉底式审问或 C4 建模。
-- **在 Claude Code / 自研 Agent 中**：将 `skills/**/*.md` 直接配置为 Agent 的专门 Skill 或 Subagent 角色指令。
-
-### 形态 3：单点独立使用 (离线设计与评审)
-无需启动整个生命周期，直接按需调用：
-- 想写一份标准的架构决策？直接参考 `skills/03_contracts_and_decisions/record_architecture_decision.md` 并套用 `templates/adr-template.md`。
-- 想厘清系统与外部三方的依赖与防腐层？直接使用 `skills/02_structural_modeling/generate_system_context.md` 绘制 Mermaid C4 图。
+### 其他平台 (Codex / Cursor / Gemini CLI)
+支持直接挂载到各平台技能目录（如 `~/.agents/skills/` 或 `~/.gemini/antigravity-cli/skills/`）。
 
 ---
 
-## 快速开始
+## 核心工作流与路径分级
 
-### 1. 运行质量检查与测试套件
+面对工程需求时，首先明确任务路径等级：
+
+1. **Spike 验证型**：技术可行性探针，输出轻量结论，不保留为生产代码；
+2. **Bounded 局域型**：已有明确系统架构下的增量变更，局部补充组件契约或 ADR；
+3. **Architectural 系统型**：全新系统、核心重构或引入非确定性 AI 能力，必须完整执行全套架构技能推导。
+
+推导步骤：
+```text
+[using-architect]
+       │
+       ▼
+[architecture-grounding] ──────► 产出 ARC、NFR 矩阵与硬约束
+       │
+       ▼
+[architecture-overview]  ──────► 确立 System Context 与 AOD 分层大图
+       │
+       ▼
+[component-modeling]     ──────► 细化组件模型 CM 与端到端时序流
+       │
+       ▼
+[operational-modeling]   ──────► 制定物理运行模型 OM、网络分区与故障韧性矩阵
+       │
+       ▼
+[conceptual-data-modeling] ────► 确立实体模型、生产级 DDL 与多模存储划分
+       │
+       ▼
+[boundary-contracts]     ──────► 制定 OpenAPI / 异步事件契约
+       │
+       ▼
+[architecture-decisions] ──────► 记录关键技术博弈 ADR
+       │
+       ▼
+[architecture-execution] ──────► 编写 Walking Skeleton 骨架与 PoC 验证
+       │
+       ▼
+[architecture-governance] ─────► 提交 ARB 评审门禁与 ATAM 效用树穿刺
+       │
+       ▼
+[architecture-refinement] ─────► 自动化排版精修并生成交互式 HTML 架构看板
+```
+
+---
+
+## 工程质量与自动化契约检查
+
+本仓库内置严格的技能规约与代码质量自动化检查，对标工业级标准：
+
 ```bash
+# 1. 语法与字节码编译检查
+npm run compile
+
+# 2. 代码与规范静态检查
 npm run lint
-npm run test
-# 或者直接使用 Python
-pytest -v
+
+# 3. 运行全套契约与功能测试 (含技能规范检查 tests/test_skills_spec.py)
+npm test
 ```
 
-### 2. 状态机调度与交互推进
-```bash
-# 查看当前架构生命周期状态
-python run.py --status
-
-# 交互式单步推进（遇到 HITL 门禁提示审批确认）
-python run.py --step
-
-# 生成演示架构资产并自动批准推进
-python run.py --init-sample-assets
-python run.py --auto-approve
-
-# 重置生命周期状态
-python run.py --reset
-```
-
-### 3. 编译输出交互式架构全景画板 (Archify 风格)
-```bash
-# 将 02-models/ 下的架构图表编译为自包含单文件 HTML 画板
-python run.py --render-board
-
-# 生成产物路径：docs/architecture/architecture_board.html
-# 支持浏览器直接打开、双主题切换、平移缩放 (Pan & Zoom) 与高清 SVG 导出
-```
-
----
-
-## 致谢与致敬开源 (Acknowledgments & Open Source Inspiration)
-
-本项目在架构设计方法论、可视化体系与工程落地实践中，深受以下开源项目、架构流派与前沿思想的启发与滋养，特此致以诚挚感谢：
-
-- **[grill-me](https://github.com/) / 苏格拉底式澄清方法论**: 启发了全生命周期第一阶段 `GRILLING`（架构前期极限盘问）的设计哲学，通过高密度、穿透式的苏格拉底式审问（Socratic Grilling），在编码前充分挖掘隐性冲突、技术妥协与不可违背的硬约束。
-- **[C4 Model](https://c4model.com/) & [Archify](https://github.com/)** (Simon Brown 等): 启发了层次化架构抽象模型（Context, Container, Component, Code）与现代化交互式架构画板的设计哲学。
-- **[Mermaid.js](https://mermaid.js.org/)**: 提供了强大的“架构即代码 (Diagrams as Code)”绘制引擎，使架构图谱具备版本受控与文本可审查性。
-- **[MADR (Markdown Architectural Decision Records)](https://adr.github.io/madr/)**: 启发了轻量化、结构化、可纳入代码评审的架构决策记录标准。
-- **[LMAX Disruptor](https://lmax-exchange.github.io/disruptor/)**: 启发了确定性定序先行、无锁环形缓冲区与单线程纯内存状态机的高性能设计范式。
-- **[Team Topologies](https://teamtopologies.com/)** (Matthew Skelton, Manuel Pais): 启发了 Layer 4 中基于康威定律的团队阵型拓扑、交互模式与价值流对齐方法论。
-- **[OpenAPI Specification](https://www.openapis.org/) & [SBE (Simple Binary Encoding)](https://github.com/real-logic/simple-binary-encoding)**: 提供了清晰严密、跨语言、面向极速网络边界的强契约标准。
-- **[svg-pan-zoom](https://github.com/bumbu/svg-pan-zoom)**: 为交互式架构全景画板提供了平滑流畅的矢量图无级缩放与平移操控体验。
-
-
+测试套件将自动检查：
+- 所有技能是否包含合法的 `SKILL.md`；
+- YAML Frontmatter 是否合规且与目录名一致；
+- `description` 是否遵守 SDO（以 `Use when...` 开头）；
+- 文档内部引用的相对文件与模板是否存在（死链防护）。

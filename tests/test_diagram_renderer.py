@@ -16,8 +16,8 @@ import pytest
 # 加入搜索路径
 TEST_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TEST_DIR.parent.resolve()
-ORCHESTRATOR_DIR = REPO_ROOT / "skills" / "00_orchestrator"
-sys.path.insert(0, str(ORCHESTRATOR_DIR))
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from render_architecture_board import (  # noqa: E402
     build_interactive_html,

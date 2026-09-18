@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# SessionStart hook for architect_skill plugin
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+using_architect_skill="${PLUGIN_ROOT}/skills/using-architect/SKILL.md"
+
+if [ -f "$using_architect_skill" ]; then
+    using_architect_content=$(cat "$using_architect_skill")
+else
+    using_architect_content="Architect Skill is active. Use architect skills for system design and architecture governance."
+fi
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+using_escaped=$(escape_for_json "$using_architect_content")
+session_context="<EXTREMELY_IMPORTANT>\nYou are equipped with the Architect Skill framework.\n\n**Below is the full content of your 'skills/using-architect/SKILL.md' - your master guide to using architecture skills:**\n\n${using_escaped}\n</EXTREMELY_IMPORTANT>"
+
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+  printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+  printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+else
+  printf '{\n  "additionalContext": "%s"\n}\n' "$session_context"
+fi
+
+exit 0

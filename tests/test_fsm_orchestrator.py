@@ -21,8 +21,8 @@ import pytest
 # 将 00_orchestrator 加入 sys.path 以支持模块导入
 TEST_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TEST_DIR.parent.resolve()
-ORCHESTRATOR_DIR = REPO_ROOT / "skills" / "00_orchestrator"
-sys.path.insert(0, str(ORCHESTRATOR_DIR))
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from orchestrate_architecture_lifecycle import (  # noqa: E402
     ArchitectureLifecycleFSM,

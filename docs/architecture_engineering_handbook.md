@@ -142,16 +142,16 @@ flowchart LR
 
 1. **跑测试 (Run Tests & Audits)**：
    - 运行工程级单测：`npm run compile && npm run lint && npm test`；
-   - 运行工件质量扫描：`python3 skills/06_refinement_and_polishing/document_polisher.py docs/architecture/`。
+   - 运行工件质量扫描：`python3 skills/architecture-refinement/scripts/document_polisher.py docs/architecture/`。
 2. **全景评估 (Evaluate Architecture Assets)**：
-   - 激活技能：[`audit_generated_architecture_assets.md`](file:///Users/swizard/code/architect_skill/skills/05_audit_and_evolution/audit_generated_architecture_assets.md)；
+   - 激活技能：[`architecture-governance`](file:///Users/swizard/code/architect_skill/skills/architecture-governance/SKILL.md)；
    - 严格审查 10 大核心维度，重点核验 ARB AI 原生三大一票否决项（裸奔 Agent、无量化评测、无物理断电开关）。
 3. **生成改进建议 (Synthesize Evolution Proposals)**：
-   - 激活技能：[`feedback_loop_orchestrator_evolver.md`](file:///Users/swizard/code/architect_skill/skills/05_audit_and_evolution/feedback_loop_orchestrator_evolver.md)；
+   - 激活技能：[`architecture-governance`](file:///Users/swizard/code/architect_skill/skills/architecture-governance/SKILL.md)；
    - 应用“问题反推与映射矩阵法则”，将下游代码与文档缺陷定向反推至对应的 Prompt、模板或主控门禁，输出 `docs/orchestrator_evolution_proposal.md`。
 4. **系统级改进 (Refine Orchestration & Specs)**：
-   - 激活技能：[`architecture-documentation-refinement`](file:///Users/swizard/code/architect_skill/skills/06_refinement_and_polishing/SKILL.md)；
-   - 坚持“**只修改主控、规则与模板，通过重跑测试使生成物自然达标**”的原则，更新 `skills/`、`templates/` 与 `fsm_config.json`。
+   - 激活技能：[`architecture-refinement`](file:///Users/swizard/code/architect_skill/skills/architecture-refinement/SKILL.md)；
+   - 坚持“**只修改主控、规则与模板，通过重跑测试使生成物自然达标**”的原则，更新 `skills/`、各技能 `templates/` 与 `scripts/fsm_config.json`。
 5. **回归重测 (Retest & Golden Baseline Verification)**：
    - 重新执行测试与质量扫描，验证缺陷消除，确保各工件综合评分达标且 CI 门禁放行。
 
