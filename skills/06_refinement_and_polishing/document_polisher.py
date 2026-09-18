@@ -637,6 +637,51 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("缺少面对存量系统的'基线冻结与增量零容忍'治理策略")
 
+        # 18. Technical Debt Ledger (技术债务台账与治理) 专属规范深度审计
+        is_debt_file = "technical-debt" in file_path.name.lower() or "debt-ledger" in file_path.name.lower()
+
+        if is_debt_file and file_path.suffix.lower() == ".md":
+            # 检查债务分类与定级体系 (架构型、代码型、基础设施型、文档型)
+            has_taxonomy = bool(re.search(r"(架构型|Architectural\s*Debt)", content, re.IGNORECASE)) and \
+                           bool(re.search(r"(代码|设计|Code|Design)", content, re.IGNORECASE)) and \
+                           bool(re.search(r"(基础设施|运维|Infrastructure|Operational)", content, re.IGNORECASE))
+            if not has_taxonomy:
+                score -= 15
+                suggestions.append("技术债务台账缺少严谨的'债务分类与定级体系' (架构型债务、代码设计型、基础设施型)")
+
+            # 检查'本金'与'利息'量化双重度量机制 (Principal vs Interest)
+            has_principal = bool(re.search(r"(本金|Principal|人天|工时|重构成本)", content, re.IGNORECASE))
+            has_interest = bool(re.search(r"(利息|Interest|摩擦成本|系统风险|代价)", content, re.IGNORECASE))
+            if not (has_principal and has_interest):
+                score -= 20
+                suggestions.append("技术债务缺少'本金(重构人天)'与'利息(摩擦成本与系统风险)'量化双重度量")
+
+            # 检查关联架构资产回溯 (CM, OM, ADR, ARB Exemption)
+            has_arch_links = bool(re.search(r"(CM|OM|ADR|ARB|组件|决策|豁免)", content, re.IGNORECASE))
+            if not has_arch_links:
+                score -= 15
+                suggestions.append("技术债务条目未明确关联上游架构资产 (CM组件、OM部署、ADR决策或ARB豁免)")
+
+            # 检查偿还契约、截止到期日与责任人 (Repayment Contract & Due Date)
+            has_repayment = bool(re.search(r"(偿还|Repayment|清偿|计划)", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(截止|到期|Due\s*Date|期限|Sprint|202\d-\d{2}-\d{2})", content, re.IGNORECASE)) and \
+                            bool(re.search(r"(责任人|Owner|批准人)", content, re.IGNORECASE))
+            if not has_repayment:
+                score -= 15
+                suggestions.append("技术债务缺少明确的'偿还契约' (承接责任人、批准人与具体截止到期日/Sprint)")
+
+            # 检查偿债预算硬性配额机制 (Debt Budget 15%~20%)
+            has_budget = bool(re.search(r"(预算|Budget|15%|20%|Story\s*Points|产能配额)", content, re.IGNORECASE))
+            if not has_budget:
+                score -= 15
+                suggestions.append("技术债务治理缺少硬性的'迭代偿还预算配额' (每个敏捷冲刺切出 15%~20% 产能)")
+
+            # 检查状态机与生命周期流转 (Active, Repaid, Accepted)
+            has_status_lifecycle = bool(re.search(r"(Active|Repaid|Accepted|挂账|已偿还|接受风险|核销)", content, re.IGNORECASE))
+            if not has_status_lifecycle:
+                score -= 10
+                suggestions.append("技术债务台账缺少规范的状态流转字段 (Active / Repaid / Accepted)")
+
         score = max(0, min(100, score))
 
 
