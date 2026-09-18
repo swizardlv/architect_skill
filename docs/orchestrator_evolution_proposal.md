@@ -1,22 +1,21 @@
-# 主控引擎与规约演进提案 (Orchestrator Evolution Proposal)
+# 技能库与主控规范系统级改进提案 (Skills & Evolution Proposal)
 
-## 1. 背景与反推来源
-在对真实案例“照片魔法屋 (photo_magic_house)”进行首轮端到端推演与资产审计后，发现产出物在 Mermaid 语法健壮性、数据模型 DDL 完备度以及异步队列容错方案上存在体系化短板。
-本提案严格贯彻“**不手工篡改案例生成物，定向反推修改主控规则与模板，通过重跑推演自然达标**”的元演进哲学。
+基于 `legal_contract_guardian` 案例实测中暴露的缺陷，坚持“**只修改主控、规则与模板，通过更新技能库使资产自然达标**”的原则，规划以下演进项：
 
----
+## 一、 技能与模板升级规划
 
-## 2. 审计问题与主控根因映射表 (Finding-to-Cause Mapping)
+1. **升级 `skills/architecture-overview/`**：
+   - 更新 `templates/system-context-template.md`：强制增加“上下文实体交互矩阵”标准表格、“三道安检门”与“中心黑盒实体界定”章节。
+   - 更新 `SKILL.md`：在执行步骤中将交互矩阵列为必查项。
+2. **升级 `skills/architecture-decisions/`**：
+   - 更新 `templates/adr-template.md`：增加备选方案多维对比矩阵表格（选项、性能、成本、复杂度、逆转成本），增加“确定性锚点”与“可观测性排障代价”分析项。
+3. **升级 `skills/operational-modeling/`**：
+   - 更新 `templates/operational-model-template.md`：引入 Logical OM 到 Physical OM 的演进映射表以及标准节点卡片集（Node Specifications）。
+4. **升级 `skills/architecture-governance/`**：
+   - 更新 `templates/utility-tree-atam-template.md`：引入“六要素场景法”（刺激源、刺激、环境、构件、响应、度量）推演表。
+   - 更新 `templates/technical-debt-ledger-template.md`：引入“本金(人天) + 利息(风险)”双重度量，新增“AI 认知型技术债务”识别分类。
 
-| 审计缺陷编号 | 缺陷现象描述 | 根本病灶定位 | 主控整改落脚点与目标 |
-| :--- | :--- | :--- | :--- |
-| **F-01** | Mermaid 状态机连线文本包含未转义比较符（如 `重试 <= 2`）导致语法警告 | `skills/02_structural_modeling/derive_logical_domain_model.md` 缺乏对比较符引号转义的强约束 | 升级 `derive_logical_domain_model.md`，显式加入 Mermaid 语法安全规约，强制要求比较符使用双引号包裹。 |
-| **F-02** | 概念数据模型仅有 ER 图，缺少生产级 DDL 与索引规划 | `skills/02_structural_modeling/derive_conceptual_data_model.md` 与模板未将物理 DDL 列为必要产出 | 升级 `derive_conceptual_data_model.md` 与 `templates/conceptual-data-model-template.md`，强制要求输出带复合索引的生产级 DDL。 |
-| **F-03** | 异步任务队列 ADR 缺失消息重领（XCLAIM）与死信队列说明 | `skills/03_contracts_and_decisions/record_architecture_decision.md` 缺乏针对消息中间件决策的深度检查项 | 升级 ADR 指南，在异步解耦决策中增加消息丢失防范、死信队列（DLQ）与消费者崩溃自愈的硬性考量。 |
-
----
-
-## 3. 主控元资产修改计划 (Patch Plan)
-1. **修改 `skills/02_structural_modeling/derive_logical_domain_model.md`**：增加 Mermaid 状态机转义规则。
-2. **修改 `skills/02_structural_modeling/derive_conceptual_data_model.md`**：在输出要求中补充生产级 DDL 与索引。
-3. **修改 `skills/03_contracts_and_decisions/record_architecture_decision.md`**：增加异步架构决策的韧性契约。
+## 二、 演进落地与回归验证
+- 完成上述模板与技能规约升级；
+- 重新刷新案例工作区生成物；
+- 执行 `document_polisher.py` 质量复审与全量回归测试。
