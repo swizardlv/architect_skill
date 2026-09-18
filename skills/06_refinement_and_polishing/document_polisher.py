@@ -495,6 +495,46 @@ class ArchitectureDocumentPolisher:
                 score -= 15
                 suggestions.append("ATAM 缺少'风险处置闭环追踪矩阵' (所有风险必须强制绑定 PoC、ADR 或技术债务)")
 
+        # 15. Proof of Concept (PoC) 专属规范深度审计 (IBM 架构验证与深水区工程刺破标准)
+        is_poc_file = "poc" in file_path.name.lower()
+
+        if is_poc_file and file_path.suffix.lower() == ".md":
+            # 检查穿透式垂直切片定位 (Tracer Bullet / Spike)
+            has_tracer_bullet = bool(re.search(r"(垂直切片|Tracer\s*Bullet|Spike|极窄深度)", content, re.IGNORECASE))
+            if not has_tracer_bullet:
+                score -= 15
+                suggestions.append("PoC 缺少'穿透式垂直切片 (Tracer Bullet / Spike)'明确声明，需聚焦单一险峻链路剥离常规业务")
+
+            # 检查关联架构推导链路 (关联 ADR, ARC 或承接 ATAM 风险项)
+            has_architecture_links = bool(re.search(r"(ADR|架构决策)", content, re.IGNORECASE)) and \
+                                     bool(re.search(r"(ARC|NFR|质量属性|需求)", content, re.IGNORECASE))
+            if not has_architecture_links:
+                score -= 15
+                suggestions.append("PoC 未明确关联驱动它的上游架构决策 (ADR) 或架构需求 (ARC/ATAM 风险项)")
+
+            # 检查时间盒与不可篡改的预设熔断指标 (Kill Criteria)
+            has_timebox = bool(re.search(r"(时间盒|Time-box|工作日|周期)", content, re.IGNORECASE))
+            has_kill_criteria = bool(re.search(r"(熔断指标|Kill\s*Criteria|淘汰指标|失败门槛)", content, re.IGNORECASE))
+            if not has_timebox:
+                score -= 10
+                suggestions.append("PoC 缺少'严格时间盒 (Time-boxing 1~2周)'周期控制")
+            if not has_kill_criteria:
+                score -= 15
+                suggestions.append("PoC 缺少预先设立的不可篡改'熔断指标 (Kill Criteria)'，必须明确何种情况下方案被判定淘汰")
+
+            # 检查破坏性混沌实验与真实压测 (Chaos, 注入, 崩溃, 拟真网络)
+            has_destructive_chaos = bool(re.search(r"(破坏性|混沌|Chaos|延迟注入|丢包|kill|崩溃|断流|断电|抖动)", content, re.IGNORECASE))
+            if not has_destructive_chaos:
+                score -= 15
+                suggestions.append("PoC 缺少真实物理条件下的'破坏性混沌实验 (Chaos & True Physics)'，严禁在玩具 localhost 环境走过场")
+
+            # 检查最终结项决议与架构资产 100% 闭环反哺 (更新 CM/OM/ADR)
+            has_resolution = bool(re.search(r"(采纳|Accepted|Rejected|淘汰|决议|结项)", content, re.IGNORECASE))
+            has_feedback_loop = bool(re.search(r"(闭环|反哺|校准|CM|OM|ADR|Feedback\s*Loop)", content, re.IGNORECASE))
+            if not (has_resolution and has_feedback_loop):
+                score -= 15
+                suggestions.append("PoC 缺少明确的结项最终决议或 100% 架构闭环反哺记录 (必须反哺修改 CM/OM/ADR)")
+
         score = max(0, min(100, score))
 
 
