@@ -586,6 +586,57 @@ class ArchitectureDocumentPolisher:
                 score -= 15
                 suggestions.append("ARB 评审缺少明确的'四大裁决结论之一'或'整改行动项 (Action Items)'与责任期限")
 
+        # 17. Automated Architecture Conformance & Compliance 架构合规扫描专项深度审计
+        is_conformance_file = "conformance" in file_path.name.lower() or "compliance" in file_path.name.lower()
+
+        if is_conformance_file and file_path.suffix.lower() == ".md":
+            # 检查四大核心扫描维度覆盖 (分层边界、数据所有权、包拓扑规范、供应链安全)
+            has_layering = bool(re.search(r"(分层|边界|Layering|ADP|无环)", content, re.IGNORECASE))
+            has_data_ownership = bool(re.search(r"(数据所有权|持久化|Data Ownership|私有)", content, re.IGNORECASE))
+            has_topology = bool(re.search(r"(包结构|拓扑|契约|Contract|命名|Stereotype)", content, re.IGNORECASE))
+            has_supply_chain = bool(re.search(r"(供应链|安全|开源协议|License|CVE|SBOM)", content, re.IGNORECASE))
+
+            missing_dims = []
+            if not has_layering: missing_dims.append("分层边界扫描 (Layering & ADP)")
+            if not has_data_ownership: missing_dims.append("数据所有权防腐 (Data Ownership)")
+            if not has_topology: missing_dims.append("包结构与契约规范 (Package Topology)")
+            if not has_supply_chain: missing_dims.append("供应链与开源合规 (Supply Chain & License)")
+
+            if missing_dims:
+                score -= 20
+                suggestions.append(f"架构合规扫描缺少核心扫描维度: {', '.join(missing_dims)}")
+
+            # 检查 CI/CD 违规即熔断机制 (Break the Build)
+            has_break_build = bool(re.search(r"(熔断|Break the Build|中断|禁止合入|PR)", content, re.IGNORECASE))
+            if not has_break_build:
+                score -= 15
+                suggestions.append("架构合规扫描缺少 CI/CD '违规即熔断 (Break the Build)' 强制拦截策略")
+
+            # 检查测试规则与 CM 组件模型 1:1 映射
+            has_cm_mapping = bool(re.search(r"(CM-\d+|组件模型|映射|契约编号)", content, re.IGNORECASE))
+            if not has_cm_mapping:
+                score -= 15
+                suggestions.append("架构测试规则未与组件模型 (CM-00X) 建立 1:1 追溯映射")
+
+            # 检查架构单元测试代码化用例 (ArchUnit / 架构即代码实现)
+            has_code_example = bool(re.search(r"(ArchTest|ArchRule|ArchUnit|@Test|classes|layeredArchitecture|assert)", content, re.IGNORECASE))
+            if not has_code_example:
+                score -= 15
+                suggestions.append("缺少'架构即测试 (Architecture as Tests)'代码化单元测试实录用例")
+
+            # 检查架构特例豁免带有时效 (Architecture Exception with Expire Date)
+            has_exceptions_with_expiry = bool(re.search(r"\|.*(豁免|特例|Exception).*\|", content, re.IGNORECASE)) and \
+                                         bool(re.search(r"(到期|失效|Expire|202\d-\d{2}-\d{2})", content, re.IGNORECASE))
+            if not has_exceptions_with_expiry:
+                score -= 15
+                suggestions.append("缺少纳管的'架构特例豁免 (Architecture Exception)'台账或未配置明确的到期失效日 (Expire Date)")
+
+            # 检查基线冻结与渐进式治理策略 (Freezing Baseline)
+            has_baseline_freezing = bool(re.search(r"(基线|冻结|Baseline|存量|增量)", content, re.IGNORECASE))
+            if not has_baseline_freezing:
+                score -= 10
+                suggestions.append("缺少面对存量系统的'基线冻结与增量零容忍'治理策略")
+
         score = max(0, min(100, score))
 
 
