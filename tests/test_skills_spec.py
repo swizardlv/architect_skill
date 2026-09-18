@@ -82,3 +82,31 @@ def test_skill_markdown_links_integrity(skill_dir: Path):
 
         resolved_path = (skill_dir / target_file).resolve()
         assert resolved_path.exists(), f"{skill_md} 中引用的链接 '{link_target}' 目标不存在: {resolved_path}"
+
+
+def test_zero_hardcoded_case_names_in_skills_and_scripts():
+    """架构卫生硬门禁：确保 skills/ 与 scripts/ 的 Python 源码中零业务硬编码.
+
+    严禁将具体业务案例 (如卫星、手术机器人、eVTOL等具体业务分支) 写死在底层通用脚本中，
+    必须完全依赖数据驱动解析。
+    """
+    prohibited_literals = [
+        "OrbitalSat Constellation",
+        "SurgicalRobot Teleoperation",
+        "AeroTraffic eVTOL",
+        "Smart Claim Adjuster",
+    ]
+
+    target_py_files = list((REPO_ROOT / "skills").rglob("*.py")) + list((REPO_ROOT / "scripts").glob("*.py"))
+    assert len(target_py_files) > 0
+
+    violations = []
+    for py_file in target_py_files:
+        if "test" in py_file.name or py_file.name.startswith("."):
+            continue
+        text = py_file.read_text(encoding="utf-8")
+        for literal in prohibited_literals:
+            if literal in text:
+                violations.append(f"{py_file.relative_to(REPO_ROOT)} 违规硬编码业务案例: '{literal}'")
+
+    assert not violations, f"检测到技能或引擎中存在业务案例硬编码违规:\n" + "\n".join(violations)

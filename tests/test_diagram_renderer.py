@@ -17,13 +17,16 @@ import pytest
 TEST_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TEST_DIR.parent.resolve()
 SCRIPTS_DIR = REPO_ROOT / "scripts"
+POLISHER_DIR = REPO_ROOT / "skills" / "architecture-refinement" / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
+sys.path.insert(0, str(POLISHER_DIR))
 
 from render_architecture_board import (  # noqa: E402
     build_interactive_html,
     extract_mermaid_code,
     render_board,
 )
+from document_polisher import ArchitectureDocumentPolisher  # noqa: E402
 
 
 @pytest.fixture
@@ -101,3 +104,52 @@ def test_render_board_integration(temp_ws: Path) -> None:
     assert "C4 Context" in content
     assert "Interaction Sequence" in content
     assert "Data Flow Pipeline" in content
+
+
+def test_rendered_board_passes_js_syntax_and_audit(temp_ws: Path) -> None:
+    """自动化硬门禁：确保编译出的自包含 HTML 通过真实 Node.js 语法分析与数据负载校验."""
+    arch_dir = temp_ws / "docs" / "architecture"
+    req_dir = arch_dir / "01-requirements"
+    req_dir.mkdir(parents=True, exist_ok=True)
+    (req_dir / "01-01-business-drivers.md").write_text(
+        "# 🩺 SurgicalRobot Teleoperation - 微创手术机器人超低时延系统\n\n## 驱动力\n- 1ms 控制闭环",
+        encoding="utf-8",
+    )
+
+    out_file = temp_ws / "test_board.html"
+    board_path = render_board(arch_dir, output_path=out_file)
+
+    polisher = ArchitectureDocumentPolisher(arch_dir)
+    report = polisher.audit_rendered_board(board_path)
+
+    assert report.is_valid, f"画板未能通过质量门禁审计: {report.errors}"
+    assert report.js_syntax_passed, "内嵌 JavaScript 未能通过 Node.js 编译检查"
+    assert report.data_payload_valid, "window.__CANVAS_DATA__ 数据未成功注入或 JSON 非法"
+    assert report.artifacts_count >= 1, "工件数量必须大于等于 1"
+    assert "SurgicalRobot" in report.project_name, f"项目名称解析异常: {report.project_name}"
+
+
+def test_rendered_board_handles_newlines_and_quotes(temp_ws: Path) -> None:
+    """自动化硬门禁：防退化测试，确保包含换行、双引号、多行代码块的工件不会引发 JS 语法崩溃."""
+    arch_dir = temp_ws / "docs" / "architecture"
+    des_dir = arch_dir / "02-architecture-design"
+    des_dir.mkdir(parents=True, exist_ok=True)
+
+    tricky_content = """# Title with "Double Quotes" and 'Single Quotes'
+Line 1\r\nLine 2 with \\"escapes\\"
+```json
+{
+  "key": "value with \\n newline and \\"nested quotes\\""
+}
+```
+"""
+    (des_dir / "02-01-system-overview.md").write_text(tricky_content, encoding="utf-8")
+
+    out_file = temp_ws / "quotes_board.html"
+    board_path = render_board(arch_dir, output_path=out_file, project_name="Tricky Quoting Project")
+
+    polisher = ArchitectureDocumentPolisher(arch_dir)
+    report = polisher.audit_rendered_board(board_path)
+
+    assert report.is_valid, f"含复杂引号换行的画板未能通过审计: {report.errors}"
+    assert report.js_syntax_passed, "含复杂引号换行的脚本未能通过 Node.js 语法检查"

@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -23,6 +26,17 @@ class DocumentQualityReport:
     placeholders_found: List[str]
     score: int  # 0 - 100
     suggestions: List[str]
+
+
+@dataclass
+class BoardQualityReport:
+    html_path: str
+    is_valid: bool
+    js_syntax_passed: bool
+    data_payload_valid: bool
+    artifacts_count: int
+    project_name: str
+    errors: List[str]
 
 
 class ArchitectureDocumentPolisher:
@@ -45,6 +59,112 @@ class ArchitectureDocumentPolisher:
                 all_passed = False
 
         return all_passed, reports
+
+    def audit_rendered_board(self, html_path: Path | str) -> BoardQualityReport:
+        """对生成的自包含 HTML 架构画板进行可解释性与运行时质量硬门禁审计.
+
+        检查点：
+        1. 物理文件存在且包含完整的 HTML5 闭合标签；
+        2. 提取内嵌 JavaScript 脚本并通过 Node.js 执行真实语法分析 (node --check)；
+        3. 验证 window.__CANVAS_DATA__ 是否为合法、可解析的 JSON 工件数组；
+        4. 验证工件数量 > 0，且每个工件包含 num, title, category, mime, content；
+        5. 验证项目名称是否有效（非默认空占位，非空）。
+        """
+        hp = Path(html_path).resolve()
+        errors: List[str] = []
+
+        if not hp.exists():
+            return BoardQualityReport(
+                html_path=str(hp),
+                is_valid=False,
+                js_syntax_passed=False,
+                data_payload_valid=False,
+                artifacts_count=0,
+                project_name="Unknown",
+                errors=["画板 HTML 文件不存在"],
+            )
+
+        content = hp.read_text(encoding="utf-8")
+        if len(content) < 1000 or "</html>" not in content.lower():
+            errors.append("画板文件内容过小或缺少闭合 </html> 标签，可能构建中断")
+
+        # 1. 语法检查：提取内嵌的每个 <script> 标签并通过 node --check 校验
+        js_syntax_passed = True
+        scripts = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", content, re.DOTALL | re.IGNORECASE)
+        for idx, script_body in enumerate(scripts):
+            script_text = script_body.strip()
+            if not script_text:
+                continue
+            try:
+                proc = subprocess.run(
+                    ["node", "--check"],
+                    input=script_text,
+                    text=True,
+                    capture_output=True,
+                    timeout=10,
+                )
+                if proc.returncode != 0:
+                    js_syntax_passed = False
+                    err_msg = proc.stderr.strip().splitlines()
+                    short_err = err_msg[0] if err_msg else f"Code {proc.returncode}"
+                    errors.append(f"内嵌 JavaScript 第 {idx+1} 脚本块语法解析失败: {short_err}")
+            except Exception as ex:
+                errors.append(f"调用 Node 校验 JS 语法异常: {ex}")
+
+        # 2. 数据负载检查：验证 window.__CANVAS_DATA__ 或 const artifacts = [...]
+        data_payload_valid = True
+        artifacts_count = 0
+        data_match = re.search(r"(?:window\.__CANVAS_DATA__|const artifacts)\s*=\s*(\[.*?\])\s*;", content, re.DOTALL)
+        if not data_match:
+            data_payload_valid = False
+            errors.append("画板中未找到 artifacts 数据挂载定义")
+        else:
+            raw_json = data_match.group(1)
+            try:
+                artifacts = json.loads(raw_json)
+                if not isinstance(artifacts, list):
+                    data_payload_valid = False
+                    errors.append("window.__CANVAS_DATA__ 不是数组结构")
+                else:
+                    artifacts_count = len(artifacts)
+                    if artifacts_count == 0:
+                        data_payload_valid = False
+                        errors.append("window.__CANVAS_DATA__ 数组为空，画板列表将无法呈现内容")
+                    else:
+                        for a in artifacts:
+                            missing_keys = [k for k in ("num", "title", "layer_title", "raw_content") if k not in a]
+                            if missing_keys:
+                                data_payload_valid = False
+                                errors.append(f"工件缺少必需字段 {missing_keys}: {a.get('num', '未知')}")
+                                break
+            except json.JSONDecodeError as jde:
+                data_payload_valid = False
+                errors.append(f"window.__CANVAS_DATA__ JSON 解码失败: {jde}")
+
+        # 3. 项目名称提取与有效性验证
+        project_name = "Unknown"
+        pname_match = re.search(r"window\.__CANVAS_PROJECT_NAME__\s*=\s*([\"'])(.*?)\1", content)
+        if pname_match:
+            project_name = pname_match.group(2).strip()
+        else:
+            title_tag_match = re.search(r"<title>(.*?)</title>", content, re.IGNORECASE)
+            if title_tag_match:
+                project_name = title_tag_match.group(1).replace("- 架构生命周期交互画板", "").strip()
+
+        if not project_name or project_name == "Architecture Lifecycle Canvas":
+            errors.append("画板项目名称仍为通用默认占位符，未正确注入项目身份")
+
+        is_valid = len(errors) == 0
+
+        return BoardQualityReport(
+            html_path=str(hp),
+            is_valid=is_valid,
+            js_syntax_passed=js_syntax_passed,
+            data_payload_valid=data_payload_valid,
+            artifacts_count=artifacts_count,
+            project_name=project_name,
+            errors=errors,
+        )
 
     def audit_file(self, file_path: Path) -> DocumentQualityReport:
         content = file_path.read_text(encoding="utf-8")

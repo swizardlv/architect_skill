@@ -58,10 +58,24 @@ def evaluate_workspace(case_dir: Path) -> None:
         return
 
     print("\n🎨 [画板编译] 正在编译自包含离线交互架构画板...")
+    board_passed = True
+    html_board = None
     try:
         html_board = render_board(arch_dir)
         print(f"   画板已成功生成: file://{html_board}")
+        
+        # 立即执行画板运行时可解释性与 JS 语法硬门禁审查 (避免白屏与语法错误漏检)
+        board_polisher = ArchitectureDocumentPolisher(arch_dir)
+        board_report = board_polisher.audit_rendered_board(html_board)
+        if board_report.is_valid:
+            print(f"   ✅ [画板硬门禁] 语法与数据校验通过 (JS 语法断言通过, 工件数: {board_report.artifacts_count}, 项目: {board_report.project_name})")
+        else:
+            board_passed = False
+            print(f"   ❌ [画板硬门禁拦截] 检测到画板存在关键缺陷:")
+            for err in board_report.errors:
+                print(f"      - {err}")
     except Exception as e:
+        board_passed = False
         print(f"   ⚠️ 画板生成异常: {e}")
 
     print("\n📋 [质量评估] 正在运行架构文档质量精细度审查 (document_polisher)...")

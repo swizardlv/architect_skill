@@ -17,8 +17,106 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def synthesize_openapi_diagram(content: str, filename: str) -> str:
+    """从 OpenAPI YAML/JSON 内容中提取路由端点并合成接口契约拓扑图."""
+    title = "OpenAPI 3.0 API Specification"
+    endpoints: List[Tuple[str, str, str]] = []
+    try:
+        import yaml
+        data = yaml.safe_load(content)
+        if isinstance(data, dict):
+            title = data.get("info", {}).get("title", title)
+            paths = data.get("paths", {})
+            if isinstance(paths, dict):
+                for p, pdata in paths.items():
+                    if isinstance(pdata, dict):
+                        for m, mdata in pdata.items():
+                            if m.lower() in ("get", "post", "put", "delete", "patch"):
+                                summary = mdata.get("summary", "") if isinstance(mdata, dict) else ""
+                                endpoints.append((m.upper(), str(p), str(summary)))
+    except Exception:
+        m_title = re.search(r"title:\s*([^\n\r]+)", content)
+        if m_title:
+            title = m_title.group(1).strip("\"' ")
+        path_matches = re.findall(r"(\/[a-zA-Z0-9_\-\/\{\}]+):\s*\n\s*([a-z]+):", content)
+        for p, m in path_matches:
+            endpoints.append((m.upper(), p, ""))
+
+    if not endpoints:
+        endpoints = [("GET", "/api/v1/status", "服务状态检查")]
+
+    clean_title = re.sub(r'["\[\]]', "", title)
+    lines = [
+        "flowchart LR",
+        '    Client["🌐 外部调用方 / API Client"]',
+        f'    subgraph Spec ["⚡ {clean_title}"]',
+        "        direction TB",
+    ]
+    for i, (m, p, s) in enumerate(endpoints[:15]):
+        node_id = f"EP{i}"
+        desc = f"<b>{m}</b> {p}"
+        if s:
+            clean_s = re.sub(r'["\[\]]', "", s)
+            desc += f"<br><i>{clean_s}</i>"
+        lines.append(f'        {node_id}["{desc}"]')
+        lines.append(f"        Client --> {node_id}")
+    lines.append("    end")
+    return "\n".join(lines)
+
+
+def synthesize_skeleton_diagram(content: str, filename: str) -> str:
+    """从 Walking Skeleton JSON 规约中提取工程目录与分层依赖拓扑图."""
+    try:
+        data = json.loads(content)
+    except Exception:
+        data = {}
+
+    pattern = data.get("architecture_pattern", "Hexagonal")
+    dirs = data.get("directories", ["src", "tests"])
+    immutables = set(data.get("immutable_paths", []))
+
+    clean_pattern = re.sub(r'["\[\]]', "", str(pattern))
+    lines = [
+        "flowchart TD",
+        f'    subgraph Skeleton ["🧩 物理工程骨架规约 ({clean_pattern} 架构)"]',
+        "        direction TB",
+    ]
+
+    dir_nodes = []
+    for i, d in enumerate(dirs):
+        node_id = f"DIR{i}"
+        tag = " (不可变边界强契约)" if d in immutables else ""
+        role = ""
+        if "domain" in d:
+            role = "<br><i>纯领域核心实体与无依赖规则</i>"
+        elif "ports" in d:
+            role = "<br><i>驱动与被驱动端口契约接口</i>"
+        elif "adapters" in d:
+            role = "<br><i>基础设施、持久化与网络适配器</i>"
+        elif "services" in d:
+            role = "<br><i>业务用例编排与应用服务</i>"
+        elif "tests" in d:
+            role = "<br><i>物理验证与自动化契约测试</i>"
+
+        lines.append(f'        {node_id}["📁 {d}{tag}{role}"]')
+        dir_nodes.append((d, node_id))
+
+    mapping = dict(dir_nodes)
+    if "src/adapters" in mapping and "src/ports" in mapping:
+        lines.append(f"        {mapping['src/adapters']} -->|依赖实现| {mapping['src/ports']}")
+    if "src/services" in mapping and "src/ports" in mapping:
+        lines.append(f"        {mapping['src/services']} -->|依赖调用| {mapping['src/ports']}")
+    if "src/ports" in mapping and "src/domain" in mapping:
+        lines.append(f"        {mapping['src/ports']} -->|定义契约| {mapping['src/domain']}")
+    if "tests" in mapping and "src/domain" in mapping:
+        lines.append(f"        {mapping['tests']} -.->|物理断言| {mapping['src/domain']}")
+
+    lines.append("    end")
+    return "\n".join(lines)
+
+
 def extract_mermaid_code(file_path: Path) -> str:
-    """从 .mmd 或 .md 文件中提取纯净的 Mermaid 图表源码."""
+    """从 .mmd 或 .md 文件中提取纯净的 Mermaid 图表源码，或从 OpenAPI/Spec 契约中智能合成拓扑图."""
     if not file_path.exists():
         return ""
     try:
@@ -29,10 +127,22 @@ def extract_mermaid_code(file_path: Path) -> str:
     if file_path.suffix.lower() == ".mmd":
         return content
 
-    # 若为 markdown 文件，正则提取第一个 ```mermaid 代码块
-    matches = re.findall(r"```mermaid\s*\n(.*?)\n```", content, re.DOTALL)
-    if matches:
-        return matches[0].strip()
+    # 若为 markdown 文件，正则提取第一个 ```mermaid 代码块 (兼容各种换行符与大小写)
+    if file_path.suffix.lower() in (".md", ".markdown"):
+        matches = re.findall(r"```(?:mermaid)\s*[\r\n]+(.*?)[\r\n]+```", content, re.DOTALL | re.IGNORECASE)
+        if matches:
+            return matches[0].strip()
+        return ""
+
+    # 若为 OpenAPI 接口契约规范文件 (.yaml/.yml/.json)
+    if file_path.suffix.lower() in (".yaml", ".yml") or "openapi" in file_path.name.lower():
+        if "openapi:" in content or "paths:" in content:
+            return synthesize_openapi_diagram(content, file_path.name)
+
+    # 若为 Walking Skeleton 工程骨架生成规约 (.json)
+    if file_path.suffix.lower() == ".json" and ("walking-skeleton" in file_path.name.lower() or "scaffold" in file_path.name.lower()):
+        return synthesize_skeleton_diagram(content, file_path.name)
+
     return ""
 
 
@@ -47,7 +157,15 @@ def validate_mermaid_syntax(code: str) -> Tuple[bool, str]:
         "statediagram", "statediagram-v2", "erdiagram", "gantt",
         "pie", "gitgraph", "c4context", "c4container", "c4component", "c4deployment"
     )
-    first_line = cleaned.splitlines()[0].strip().lower()
+    # 忽略注释行与空行，获取首个有效指令
+    effective_lines = [
+        line.strip() for line in cleaned.splitlines()
+        if line.strip() and not line.strip().startswith("%%")
+    ]
+    if not effective_lines:
+        return False, "Mermaid 代码仅包含注释或空行"
+
+    first_line = effective_lines[0].lower()
     if not any(first_line.startswith(h) for h in valid_headers):
         return False, f"未知的 Mermaid 图表声明: '{first_line}'，必须以有效图类型开头"
 
@@ -267,7 +385,17 @@ def build_interactive_html(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{html.escape(project_name)} - 架构全景交互画板</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <script>
+    if (typeof mermaid === "undefined") {{
+      document.write('<script src="https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js"><\\/script>');
+    }}
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <script>
+    if (typeof svgPanZoom === "undefined") {{
+      document.write('<script src="https://unpkg.com/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"><\\/script>');
+    }}
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
   <style>
     :root {{
@@ -337,12 +465,28 @@ def build_interactive_html(
       gap: 12px;
       font-size: 16px;
       font-weight: 600;
+      overflow: hidden;
+    }}
+    .brand-titles {{
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
     }}
     .brand span.title {{
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 420px;
+      max-width: 520px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }}
+    .brand-titles .subtitle {{
+      font-size: 11px;
+      font-weight: normal;
+      color: var(--text-muted);
+      letter-spacing: 0.2px;
     }}
     .badge {{
       font-size: 11px;
@@ -353,6 +497,39 @@ def build_interactive_html(
       color: #ffffff;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }}
+    .project-card {{
+      padding: 12px 14px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(2, 132, 199, 0.16));
+      border-bottom: 1px solid var(--border);
+    }}
+    .project-kicker {{
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+      margin-bottom: 3px;
+    }}
+    .project-title {{
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }}
+    .project-pill {{
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background-color: var(--accent-bg);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      white-space: nowrap;
+      flex-shrink: 0;
     }}
     .controls {{
       display: flex;
@@ -541,29 +718,44 @@ def build_interactive_html(
     }}
     .viewport-body {{
       flex: 1;
+      min-height: 0;
+      min-width: 0;
       position: relative;
       overflow: hidden;
       display: flex;
+      width: 100%;
+      height: 100%;
     }}
     #viewer-container {{
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
       width: 100%;
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: grab;
+      position: relative;
     }}
     #viewer-container:active {{
       cursor: grabbing;
     }}
     .mermaid-render {{
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
       width: 100%;
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     }}
     #doc-container {{
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
       width: 100%;
       height: 100%;
       overflow-y: auto;
@@ -661,10 +853,12 @@ def build_interactive_html(
 <body>
   <header>
     <div class="brand">
-      <span style="font-size: 20px;">📐</span>
-      <span class="title">{html.escape(project_name)}</span>
+      <span style="font-size: 22px;">🏛️</span>
+      <div class="brand-titles">
+        <span class="title">{html.escape(project_name)}</span>
+        <span class="subtitle">Architecture Lifecycle Canvas · 架构全景交互画板</span>
+      </div>
       <span class="badge">{html.escape(status_tag)}</span>
-      <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">按编号顺序全景交互看板</span>
     </div>
     <div class="controls">
       <button id="theme-toggle" title="切换浅色/深色主题">🌓 主题</button>
@@ -675,6 +869,10 @@ def build_interactive_html(
 
   <div class="app-container">
     <aside class="sidebar">
+      <div class="project-card">
+        <div class="project-kicker">🎯 架构工程项目</div>
+        <div class="project-title" title="{html.escape(project_name)}">{html.escape(project_name)}</div>
+      </div>
       <div class="sidebar-header">
         <div class="title-row">
           <span>📑 架构输出物清单 (按编号递增)</span>
@@ -688,6 +886,7 @@ def build_interactive_html(
     <main class="content-area">
       <div class="content-toolbar">
         <div class="curr-meta" id="curr-meta">
+          <span class="project-pill" title="当前架构工程">{html.escape(project_name)}</span>
           <span class="num-badge" id="curr-num">--</span>
           <span id="curr-title">载入中...</span>
         </div>
@@ -724,6 +923,8 @@ def build_interactive_html(
 
   <script>
     const artifacts = {artifacts_json};
+    window.__CANVAS_DATA__ = artifacts;
+    window.__CANVAS_PROJECT_NAME__ = "{project_name}";
     let currentIndex = 0;
     let currentMode = "diagram"; // "diagram" | "doc"
     let panZoomInstance = null;
@@ -796,6 +997,8 @@ def build_interactive_html(
       }});
     }}
 
+    let currentRenderToken = 0;
+
     function selectItem(index) {{
       if (index < 0 || index >= artifacts.length) return;
       currentIndex = index;
@@ -811,25 +1014,19 @@ def build_interactive_html(
       document.getElementById("curr-title").textContent = item.title;
       document.getElementById("curr-path").textContent = `文件路径: ${{item.rel_path}} (第 ${{index + 1}} / ${{artifacts.length}} 项)`;
 
-      // 如果当前项没有图表，则自动切换到文档视图
-      if (!item.has_diagram) {{
-        setMode("doc", false);
-        document.getElementById("btn-mode-diagram").disabled = true;
-        document.getElementById("btn-mode-diagram").style.opacity = "0.4";
-      }} else {{
+      // 如果当前项包含图表，优先且自动切换到 diagram 视图
+      if (item.has_diagram) {{
         document.getElementById("btn-mode-diagram").disabled = false;
         document.getElementById("btn-mode-diagram").style.opacity = "1";
-        if (currentMode === "diagram") {{
-          renderDiagramView(item);
-        }} else {{
-          renderDocView(item);
-        }}
-      }}
-
-      if (currentMode === "doc") {{
-        renderDocView(item);
-      }} else if (item.has_diagram) {{
-        renderDiagramView(item);
+        document.getElementById("btn-mode-diagram").title = "查看架构图拓扑";
+        // 自动激活架构图视图
+        setMode("diagram", true);
+      }} else {{
+        // 无图表项禁用拓扑按钮并自动切到文档规约
+        document.getElementById("btn-mode-diagram").disabled = true;
+        document.getElementById("btn-mode-diagram").style.opacity = "0.4";
+        document.getElementById("btn-mode-diagram").title = "当前输出物未包含 Mermaid 架构图";
+        setMode("doc", true);
       }}
     }}
 
@@ -846,29 +1043,80 @@ def build_interactive_html(
         viewContainer.style.display = "flex";
         docContainer.style.display = "none";
         zoomBar.style.display = "flex";
-        if (triggerRender) renderDiagramView(artifacts[currentIndex]);
+        if (triggerRender) {{
+          renderDiagramView(artifacts[currentIndex]);
+        }} else if (panZoomInstance) {{
+          requestAnimationFrame(() => {{
+            panZoomInstance && panZoomInstance.resize();
+          }});
+        }}
       }} else {{
         viewContainer.style.display = "none";
         docContainer.style.display = "block";
         zoomBar.style.display = "none";
-        if (triggerRender) renderDocView(artifacts[currentIndex]);
+        if (triggerRender) {{
+          renderDocView(artifacts[currentIndex]);
+        }}
       }}
     }}
 
     function renderDocView(item) {{
       const target = document.getElementById("doc-target");
-      if (!item.raw_content) {{
+      if (!item || !item.raw_content) {{
         target.innerHTML = "<div class='empty-state'>该文件暂无文本内容</div>";
         return;
       }}
-      if (typeof marked !== "undefined") {{
-        target.innerHTML = marked.parse(item.raw_content);
+
+      let markdownSource = "";
+      const ext = (item.file_ext || "").toLowerCase();
+
+      if (ext === ".yaml" || ext === ".yml") {{
+        markdownSource = [
+          "### ⚡ 接口强契约规约: " + item.filename,
+          "",
+          "> 规范标准: **OpenAPI 3.0 / YAML 边界接口契约** · 状态: `STRICT`",
+          "",
+          "```yaml",
+          (item.raw_content || "").trim(),
+          "```"
+        ].join("\\n");
+      }} else if (ext === ".json") {{
+        let formattedJson = item.raw_content || "";
+        try {{
+          formattedJson = JSON.stringify(JSON.parse(item.raw_content), null, 2);
+        }} catch (e) {{}}
+        markdownSource = [
+          "### 🧩 物理工程骨架规约: " + item.filename,
+          "",
+          "> 规范标准: **JSON Schema 物理脚手架结构规约** · 状态: `LOCKED`",
+          "",
+          "```json",
+          formattedJson.trim(),
+          "```"
+        ].join("\\n");
+      }} else if (ext === ".mmd") {{
+        markdownSource = [
+          "### 📊 架构图元源码: " + item.filename,
+          "",
+          "> 规范标准: **Mermaid 结构拓扑源代码**",
+          "",
+          "```mermaid",
+          (item.raw_content || "").trim(),
+          "```"
+        ].join("\\n");
       }} else {{
-        target.innerHTML = `<pre>${{item.raw_content}}</pre>`;
+        markdownSource = item.raw_content;
+      }}
+
+      if (typeof marked !== "undefined") {{
+        target.innerHTML = marked.parse(markdownSource);
+      }} else {{
+        target.innerHTML = `<pre>${{markdownSource}}</pre>`;
       }}
     }}
 
     function renderDiagramView(item) {{
+      const token = ++currentRenderToken;
       const target = document.getElementById("graph-target");
       if (panZoomInstance) {{
         panZoomInstance.destroy();
@@ -882,36 +1130,80 @@ def build_interactive_html(
       }}
 
       const code = item.mermaid_code.trim();
-      const uniqueId = "render_" + Math.random().toString(36).substr(2, 9);
+
+      // 离线/物理隔离专网环境降级保护
+      if (typeof mermaid === "undefined") {{
+        const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        target.innerHTML = `
+          <div class="empty-state" style="max-width: 680px; text-align: left; background: var(--card-bg); padding: 24px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
+              ⚠️ 当前处于离线/物理隔离专网环境 (Mermaid 脚本未就绪)
+            </div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
+              检测到外部 CDN 暂未加载就绪。图表数据完整无损，您可以在下方直接查阅该图的确定性 Mermaid 架构源码：
+            </div>
+            <pre style="background: var(--bg-board); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; overflow-x: auto; color: var(--text-primary); border: 1px solid var(--border);">${{escapedCode}}</pre>
+          </div>
+        `;
+        return;
+      }}
+
+      // 使用合法的纯字母数字安全 ID
+      const safeId = "mermaidChart" + Math.floor(Math.random() * 1000000000);
+      const oldTemp = document.getElementById("d" + safeId);
+      if (oldTemp) oldTemp.remove();
 
       try {{
-        mermaid.render(uniqueId, code).then(result => {{
+        mermaid.render(safeId, code).then(result => {{
+          // 若中途用户已切换至其他项，则放弃过期的渲染
+          if (token !== currentRenderToken) return;
+
           target.innerHTML = result.svg;
+          if (result.bindFunctions) {{
+            result.bindFunctions(target);
+          }}
           const svgEl = target.querySelector("svg");
           if (svgEl) {{
             svgEl.style.width = "100%";
             svgEl.style.height = "100%";
-            svgEl.style.maxWidth = "100%";
-            svgEl.style.maxHeight = "100%";
-            if (typeof svgPanZoom !== "undefined") {{
-              panZoomInstance = svgPanZoom(svgEl, {{
-                zoomEnabled: true,
-                controlIconsEnabled: false,
-                fit: true,
-                center: true,
-                minZoom: 0.2,
-                maxZoom: 15,
-              }});
-            }}
+            svgEl.style.minWidth = "100%";
+            svgEl.style.minHeight = "100%";
+            svgEl.removeAttribute("max-width");
+            svgEl.style.maxWidth = "none";
+
+            requestAnimationFrame(() => {{
+              if (token !== currentRenderToken) return;
+              if (typeof svgPanZoom !== "undefined") {{
+                try {{
+                  panZoomInstance = svgPanZoom(svgEl, {{
+                    zoomEnabled: true,
+                    controlIconsEnabled: false,
+                    fit: true,
+                    center: true,
+                    minZoom: 0.1,
+                    maxZoom: 20,
+                    dblClickZoomEnabled: true,
+                    mouseWheelZoomEnabled: true
+                  }});
+                  panZoomInstance.resize();
+                  panZoomInstance.fit();
+                  panZoomInstance.center();
+                }} catch (zoomErr) {{
+                  console.warn("svgPanZoom 初始化警告:", zoomErr);
+                }}
+              }}
+            }});
           }}
         }}).catch(err => {{
-          target.innerHTML = `<div class="empty-state" style="color: #ef4444;">
-            <h3>Mermaid 图表渲染异常</h3>
-            <p style="margin-top: 8px; font-family: monospace; font-size: 12px;">${{err.message || err}}</p>
-            <pre style="text-align: left; margin-top: 16px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; font-size: 11px;">${{code}}</pre>
+          if (token !== currentRenderToken) return;
+          target.innerHTML = `<div class="empty-state" style="color: #ef4444; max-width: 680px; text-align: left; background: var(--card-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+            <h3 style="margin-bottom: 8px;">Mermaid 图表渲染异常</h3>
+            <p style="font-family: monospace; font-size: 12px; color: var(--text-secondary);">${{err.message || err}}</p>
+            <pre style="margin-top: 12px; background: var(--bg-board); padding: 12px; border-radius: 6px; font-size: 11px; overflow-x: auto;">${{code}}</pre>
           </div>`;
         }});
       }} catch (err) {{
+        if (token !== currentRenderToken) return;
         target.innerHTML = `<div class="empty-state" style="color: #ef4444;">渲染调用失败: ${{err}}</div>`;
       }}
     }}
@@ -1006,6 +1298,41 @@ def build_interactive_html(
     return html_template
 
 
+def resolve_project_display_name(ws: Path, given_name: str) -> str:
+    """数据驱动解析项目展示名称，零硬编码任何具体业务案例.
+
+    解析优先级：
+    1. 显式指定的非默认名称；
+    2. 需求/概览文档中的首个顶级标题（从 01-01-business-drivers.md、02-01-system-overview.md 等提取）；
+    3. 工作区父级目录或当前目录的人类友好格式化名称。
+    """
+    if given_name and given_name != "Architecture Lifecycle Canvas":
+        return given_name
+
+    # 尝试从文档提取标题（纯数据驱动，适用于任何案例）
+    doc_paths = [
+        ws / "01-requirements" / "01-01-business-drivers.md",
+        ws / "02-architecture-design" / "02-01-system-overview.md",
+        ws / "README.md",
+    ]
+    for dp in doc_paths:
+        if dp.exists():
+            try:
+                for line in dp.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line.startswith("# "):
+                        # 去除可能存在的类似 # [01-01] 前缀
+                        clean = re.sub(r"^#\s*(\[\d{2}-\d{2}\])?\s*", "", line).strip()
+                        if clean and len(clean) >= 3 and clean not in ("Business Drivers & Goals", "System Architecture Overview"):
+                            return clean
+            except Exception:
+                pass
+
+    parent_name = ws.parent.name if ws.name == "architecture" else ws.name
+    beautified = parent_name.replace("-", " ").replace("_", " ").title()
+    return f"🏛️ {beautified} Architecture Canvas"
+
+
 def render_board(
     workspace_root: Path | str,
     output_path: Optional[Path | str] = None,
@@ -1023,6 +1350,7 @@ def render_board(
     """
     ws = Path(workspace_root).resolve()
     artifacts = collect_artifacts(ws)
+    actual_project_name = resolve_project_display_name(ws, project_name)
 
     # 若未找到任何工件，放置默认引导项
     if not artifacts:
@@ -1042,7 +1370,7 @@ def render_board(
         })
 
     html_content = build_interactive_html(
-        project_name=project_name,
+        project_name=actual_project_name,
         artifacts=artifacts,
         metadata={"status": "ACTIVE"},
     )
