@@ -308,6 +308,34 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("ARC 缺少明确的自动化验证方式或闭环跟踪状态 (Status: Verified/Approved/Closed)")
 
+            # Agent AI 专属 ARC 深度审计 (认知有效性、TTFT流式时延、Token 经济学、黄金评测集与硬断电机制)
+            is_agent_arc = bool(re.search(r"(Agent|智能体|LLM|大模型|Cognitive|Token|Prompt 注入|Prompt Cache|TTFT|推理)", content, re.IGNORECASE))
+            if is_agent_arc:
+                has_cognitive_efficacy = bool(re.search(r"(认知有效性|Cognitive Efficacy|达成率|Completion Rate|TCR|Pass@1|幻觉率|Hallucination)", content, re.IGNORECASE))
+                if not has_cognitive_efficacy:
+                    score -= 15
+                    suggestions.append("Agent ARC 缺少'认知有效性与任务达成度'量化指标 (如 TCR/Pass@1, 事实幻觉率, 任务漂移率)")
+
+                has_ttft_latency = bool(re.search(r"(TTFT|首字|Time to First Token|单步.*时延|单步.*耗时|Per-step)", content, re.IGNORECASE))
+                if not has_ttft_latency:
+                    score -= 10
+                    suggestions.append("Agent ARC 缺少'流式首字时延 (TTFT)'或'单步思考时延 (Per-step Latency)'量化分级")
+
+                has_token_economics = bool(re.search(r"(Token.*经济|Unit Economics|单任务成本|成本上限|Cost per|缓存命中|Prompt Cache)", content, re.IGNORECASE))
+                if not has_token_economics:
+                    score -= 10
+                    suggestions.append("Agent ARC 缺少'Token 经济学与成本控制'约束 (如单任务成本上限, Prompt Cache 命中率)")
+
+                has_evals_dataset = bool(re.search(r"(黄金.*集|Golden Dataset|评测集|Evals|基准测试集|Benchmark Dataset)", content, re.IGNORECASE))
+                if not has_evals_dataset:
+                    score -= 10
+                    suggestions.append("Agent ARC 缺少与具体'黄金评测基准集 (Golden Dataset / Evals Pipeline)'的绑定验收机制")
+
+                has_kill_switch = bool(re.search(r"(断电|Kill-Switch|硬熔断|Max Steps|步数上限|死循环.*熔断)", content, re.IGNORECASE))
+                if not has_kill_switch:
+                    score -= 10
+                    suggestions.append("Agent ARC 缺少失控概率兜底的'硬性断电机制 (The Kill-Switch Metric: 成本上限/Max Steps 熔断)'")
+
         # 9. Business Drivers / Goals 专属规范深度审计 (IBM 商业目标第一源头标准)
         is_drivers_file = "business-driver" in file_path.name.lower() or "business-goal" in file_path.name.lower()
 

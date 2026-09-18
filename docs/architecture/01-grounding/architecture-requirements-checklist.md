@@ -1,39 +1,52 @@
 # 架构需求核对与质量保障清单 (Architecture Requirements Checklist, ARC)
 
-> **架构视角**: 质量工程与非功能契约 (Quality Engineering & Contractual Guardrails)  
-> **核心使命**: 将架构编排技能套件中的模糊期望（如“快速响应”、“可靠状态推进”、“看板直观”），转化为不可篡改、可度量、可验证且直接驱动 AOD、CM、OM、ADR 的工程契约铁笼。  
-> **制定铁律**: **任何无法被自动化测试或量化验收的描述，都是无效条款。**
+> **架构视角**: 质量工程、认知有效性与非功能契约 (Quality Engineering & Contractual Guardrails)  
+> **核心使命**: 将架构编排套件中的模糊期望（如“回答准确”、“状态推进稳定”、“安全受控”），转化为不可篡改、可度量、可验证且直接驱动 AOD、CM、OM、ADR 的工程契约铁笼。  
+> **制定铁律**: **任何无法被自动化测试、评测基准集或量化验收的描述，均为无效条款。**
 
 ---
 
-## 1. URPS+ 架构需求全景闭环矩阵 (URPS+ Master Matrix)
+## 1. URPS+ 与 Agent AI 核心质量需求闭环矩阵 (ARC Master Matrix)
 
-| 需求编号 | 质量属性维度 (URPS+) | 详细需求场景与指标描述 (Scenario & Target Metrics) | 架构推导映射 (Mapping to CM / OM / ADR) | 自动化验证与验收方式 (Verification Method) | 闭环状态 (Status) |
+| 需求编号 | 质量属性维度 | 详细需求场景与量化指标 (Scenario & Target Metrics) | 架构推导映射 (Mapping to CM / OM / ADR) | 评测集与自动化验证方式 (Verification Method) | 闭环状态 (Status) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **ARC-PERF-01** | **Performance & Scalability**<br>(性能与弹性) | **状态机单步跃迁**: 状态转移耗时 ≤ 50ms<br>**看板生成时延**: HTML 看板渲染生成耗时 ≤ 500ms<br>**文档审计速率**: 50 个 Markdown 文件质量打磨审计耗时 ≤ 2 秒 | • **CM**: `FSMOrchestrator`, `BoardRenderer`<br>• **OM**: 本地轻量进程运行，内存常驻占用 < 120MB<br>• **ADR**: [ADR-001](../03-decisions/ADR-001-fsm-shell.md) (确定性 FSM 调度器) | 单元测试基准耗时断言（`test_fsm_orchestrator.py` 执行时耗 < 0.1s） | 已验证 (Verified) |
-| **ARC-AVAIL-01** | **Availability & Resiliency**<br>(可用性与容灾) | **断点无损恢复**: 任意会话崩溃或强制终止，状态与上下文恢复 **RTO** < 500ms<br>**数据零丢失**: 状态机迁移日志与产物映射严格 **RPO = 0**<br>**合法跳转防护**: 非法跳转与产物缺失拦截率 100% | • **CM**: `GatekeeperGuard`, `StateManager`<br>• **OM**: 基于本地文件系统 WAL 临时原子重命名持久化<br>• **ADR**: [ADR-001](../03-decisions/ADR-001-fsm-shell.md) (状态快照持久化) | 单元测试测试用例断网与崩溃模拟（`test_state_persistence_and_resume`） | 已验证 (Verified) |
-| **ARC-SEC-01** | **Security & Compliance**<br>(安全与合规) | **隔离保护**: 外部命令执行必须在沙箱或受限子进程运行，超时强制杀进程 (Hard Timeout ≤ 30s)<br>**权限受限**: 严禁越权修改非架构文档目录<br>**代码合规**: 核心代码库杜绝混入具体业务代码 | • **CM**: `WorkspaceManager` 隔离沙箱<br>• **OM**: 工作区物理路径隔离，测试案例位于测试工作区<br>• **ADR**: 纯净架构资产与隔离规范 | CI 静态代码扫描与测试工作区越权检测 | 已验证 (Verified) |
-| **ARC-OPS-01** | **Manageability & Observability**<br>(运维与可观测性) | **架构状态透明度**: 交互式看板 100% 实时同步 FSM 状态与 Mermaid 图表<br>**质量度量透明度**: `document_polisher.py` 对各工件输出量化评分 (0-100分)<br>**日志诊断**: 详细记录每一次门禁拦截与人类打回原因 | • **CM**: `DocumentPolisher`, `BoardRenderer`<br>• **OM**: 本地日志输出与静态 HTML 看板文件<br>• **ADR**: 架构质量自动化门禁机制 | 运行 `document_polisher.py` 自动化审查全库文档 | 已批准 (Approved) |
-| **ARC-INT-01** | **Integrability & Portability**<br>(集成性与可移植性) | **运行环境兼容**: 支持 macOS / Linux，兼容 Python 3.10+ 与 Node.js 18+<br>**标准图元规范**: 100% 遵从 Mermaid 官方语法与通用 Markdown 渲染<br>**工具链联动**: 支持与 IDE 命令行及 CI/CD 管道无缝集成 | • **CM**: `DiagramRenderer` 跨平台图元适配层<br>• **OM**: 标准 npm / pytest CLI 驱动支持<br>• **ADR**: 统一标准开发包与 CLI 交互规约 | `npm run compile && npm run lint && npm test` 自动化集成构建 | 已验证 (Verified) |
+| **ARC-AI-01** | **Cognitive Efficacy**<br>(认知有效性与达成度) | • **任务端到端达成率 (TCR)**: 基于标准测试集 Pass@1 ≥ 80%，最多重试 3 次后达成率 ≥ 88%<br>• **事实幻觉率**: 核心架构推导与实体识别事实幻觉率 ≤ 1.5%<br>• **任务漂移率**: 超过 5 轮多步架构推导偏离初始意图比例 ≤ 3% | • **CM**: `COMP-CTX` (动态上下文修剪与负向假设账本)<br>• **ADR**: `ADR-001` (确定性 FSM 编排引擎) | 挂接回归评测流水线: `evals-dataset-v2.1` (包含 500 个标准业务架构推导测试集) 自动化打分 | 已批准 (Approved) |
+| **ARC-AI-02** | **Inference Latency**<br>(流式与推理时延) | • **首字流式反馈延迟 (TTFT)**: 首包 P95 ≤ 1.2 秒<br>• **单步思考时延**: 单轮 Thought->Action 耗时中位数 P50 ≤ 3 秒<br>• **长任务挂钟超时**: 完整端到端架构审查会话超时时间 ≤ 180 秒 | • **CM**: 接入层启用 SSE / WebSocket 流式推流<br>• **OM**: `COMP-GATEWAY` 开启连续批处理与异步长连接 | 采用压测套件模拟 200 并发长连接流式交互，统计 TTFT 与单步耗时直方图 | 已验证 (Verified) |
+| **ARC-AI-03** | **Unit Economics**<br>(Token 经济学与成本) | • **单任务成本上限**: 单次完整架构审查与生成 API 综合成本平均值 ≤ $0.04<br>• **费用硬熔断**: 单会话累计费用超过 $0.20 强制熔断告警并终止<br>• **缓存命中率**: 静态 System Prompt 缓存命中率 ≥ 60% | • **CM**: `COMP-ROUTER` 实行快慢思考分流 (80% 请求轻量模型承接)<br>• **OM**: 模型网关配置 Prompt Cache 与语义缓存 | 统计压测环境百万 Token 消费流水与任务产出比周期性抽样审计 | 已批准 (Approved) |
+| **ARC-AI-04** | **Safety & Guardrails**<br>(安全防御与对抗鲁棒) | • **Prompt 注入防御率**: 面对直接与间接提示词注入攻击拦截率 ≥ 99.5%<br>• **敏感数据泄露率**: 密钥、凭据与未脱敏企业内部信息外泄严格为 0<br>• **沙箱越权被拒率**: 非受控命令与网络外联 100% 阻断 | • **CM**: `COMP-GUARD` 前置意图与敏感实体识别脱敏器<br>• **OM**: `COMP-SANDBOX` 微虚机零公网出站物理隔离 | 自动化渗透注入测试集（覆盖 1,000+ 提示词越狱变种），检查网络出站报文落盘日志 | 已验证 (Verified) |
+| **ARC-AI-05** | **Tool Execution**<br>(工具调用确定性) | • **参数幻觉率**: 模型生成工具入参 Schema 校验不合格率 ≤ 2%<br>• **死循环熔断率**: 相同失败动作连续重复 3 次或总步数达到 25 步，100% 触发强制中断并转交 HITL | • **CM**: `COMP-TOOL` 强制 Pydantic / JSON Schema 严格校验<br>• **CM**: `COMP-STATE` 维护步骤计数器与防重指纹 | 注入 Mock 故障接口（持续返回 500），验证步数熔断器是否在第 3 步强制中断 | 已验证 (Verified) |
+| **ARC-PERF-01** | **Performance & Scale**<br>(性能与吞吐) | • **状态机单步跃迁**: 状态转移耗时 ≤ 50ms<br>• **看板生成时延**: HTML 看板渲染生成耗时 ≤ 500ms<br>• **文档审计速率**: 50 个 Markdown 文件质量打磨审计耗时 ≤ 2 秒 | • **CM**: `FSMOrchestrator`, `BoardRenderer`<br>• **OM**: 本地轻量进程运行，内存常驻占用 < 120MB<br>• **ADR**: `ADR-001` (确定性 FSM 调度器) | 单元测试基准耗时断言（`test_fsm_orchestrator.py` 执行耗时 < 0.1s） | 已验证 (Verified) |
+| **ARC-AVAIL-01** | **Availability & Resiliency**<br>(可用性与容灾) | • **断点恢复时效**: 会话崩溃或强制终止后，上下文恢复 **RTO < 500ms**<br>• **数据零丢失**: 状态机迁移日志与产物映射严格 **RPO = 0**<br>• **非法跳转防护**: 非法状态跳转与产物缺失拦截率 100% | • **CM**: `GatekeeperGuard`, `StateManager`<br>• **OM**: 基于本地文件系统 WAL 临时原子重命名持久化<br>• **ADR**: `ADR-001` (状态快照持久化) | 单元测试模拟断电崩溃与断点续接（`test_state_persistence_and_resume`） | 已验证 (Verified) |
 
 ---
 
 ## 2. SEI 质量属性场景六要素深化卡片 (Quality Attribute Scenarios)
 
-### 场景卡片 1: 缺少架构产物时的非法跳转拦截 (对应 ARC-AVAIL-01)
-- **刺激源 (Source)**: 开发者或大语言模型在未产出 AOD 架构概览图时调用推进指令。
-- **刺激 (Stimulus)**: 发送 `ADVANCE` 事件试图将状态从 `GRILLING` 强行跳跃到 `GROUNDING`。
-- **环境 (Environment)**: 会话正在进行中，工作区目录缺少必要产物文件。
-- **被刺激对象 (Artifact)**: 门禁守护者模块 (`Gatekeeper`) 与状态调度引擎 (`FSMOrchestrator`)。
+### 场景卡片 1: 间接提示词注入与特权越权防御 (对应 ARC-AI-04)
+- **刺激源 (Source)**: 外部第三方不受信文档、代码库或恶意构造的 Markdown 输入。
+- **刺激 (Stimulus)**: 输入文本中潜伏间接提示词注入指令（例如试图诱导 Agent 执行非授权的系统修改）。
+- **环境 (Environment)**: 系统正在执行需求分析与外部知识提炼流程。
+- **被刺激对象 (Artifact)**: 接入层安全围栏 (`COMP-GUARD`) 与执行沙箱 (`COMP-SANDBOX`)。
 - **系统响应 (Response)**:
-  1. 门禁检查发现前置产物检查清单未满足；
-  2. 立即阻止状态迁移，保持当前状态不变；
-  3. 返回明确的缺失文件清单与指引。
-- **响应度量 (Measure)**: **非法状态跳转拦截率 100%**，状态文件零污染，耗时 ≤ 10ms。
+  1. 前置安全分类器识别异常越狱指令并打标拦截；
+  2. 即便漏入推理层，工具调用网关发现入参违背命令白名单，拒绝分发；
+  3. 执行沙箱在内核层拦截越权操作，将违规事件记录至审计日志。
+- **响应度量 (Measure)**: **特权指令执行成功率为 0**，对抗样本拦截率 ≥ 99.5%，事件阻断用时 ≤ 50ms。
 
-### 场景卡片 2: 会话异常崩溃后的断点续接 (对应 ARC-AVAIL-01)
-- **刺激源 (Source)**: 宿主系统突然异常断电或终端进程被强制 SIGKILL 终止。
-- **刺激 (Stimulus)**: 处于 `STRUCTURAL_MODELING` 状态时的进程突然被杀。
+### 场景卡片 2: 工具连续异常与死循环硬断电 (对应 ARC-AI-05)
+- **刺激源 (Source)**: 下游外部服务持续抛出异常或网络超时。
+- **刺激 (Stimulus)**: 模型误判为瞬时故障，以相同参数连续发起重复工具调用。
+- **环境 (Environment)**: 会话处于多步架构推导与验证流程中。
+- **被刺激对象 (Artifact)**: 确定性状态机与防重熔断器 (`COMP-STATE`)。
+- **系统响应 (Response)**:
+  1. 状态机对比历史 Action 指纹，检测到同一失败调用已达 3 次阈值；
+  2. 立即熔断自动重试循环，挂起当前任务；
+  3. 打包生成当前排障上下文轨迹，触发人机协同（HITL）提请工程师接管。
+- **响应度量 (Measure)**: **异常自旋在 3 次内强制终止**，系统状态完整保存，零额外无谓 Token 浪费。
+
+### 场景卡片 3: 会话异常崩溃后的断点续接 (对应 ARC-AVAIL-01)
+- **刺激源 (Source)**: 宿主系统突然异常断电或终端进程被强制终止。
+- **刺激 (Stimulus)**: 处于架构推导状态时的进程突然被杀。
 - **环境 (Environment)**: 复杂多步架构推导进行中，已生成部分中间模型。
 - **被刺激对象 (Artifact)**: 状态持久化管理器 (`StateManager`)。
 - **系统响应 (Response)**:
@@ -44,12 +57,23 @@
 
 ---
 
-## 3. 五位一体全要素联动闭环 (Five Pillars Alignment)
+## 3. Agent 时代 ARC 四大验收评审防线 (Evaluation Defenses)
+
+| 评审防线 | 检查标准与硬性约束 | 本设计落实措施 | 判定 |
+| :--- | :--- | :--- | :---: |
+| **第一道防线：剔除主观词汇** | 严禁使用“聪明、稳定、友好”等主观词，指标必须可量化测试。 | 全部指标下沉为 TTFT、TCR、Pass@1、拦截率、RTO/RPO 等具体数值。 | **PASS** |
+| **第二道防线：黄金评测集挂钩** | 认知有效性与准确率指标必须具备明确的 Evals 测试集版本。 | 绑定 `evals-dataset-v2.1`（500 标准架构推导样本），具备自动化回归管道。 | **PASS** |
+| **第三道防线：硬性断电机制** | 具备针对失控概率输出的兜底保护（单任务成本上限、最大步数限制）。 | 设立 `$0.20` 成本硬熔断与 `Max Steps = 25` 步数防自旋硬熔断。 | **PASS** |
+| **第四道防线：模型漂移容忍度** | 制定底座大模型版本更新与迭代时的性能衰减与回滚控制线。 | 明确规定底座模型更新时标准评测集回归得分衰减不得超过 2%，超标自动回滚。 | **PASS** |
+
+---
+
+## 4. 五位一体全要素联动闭环 (Five Pillars Alignment)
 
 ```
                     +---------------------------------------------+
                     |        ARC 架构需求核对清单 (量化标尺)        |
-                    | (FSM跃迁≤50ms / RTO<500ms / RPO=0 / 100%拦截) |
+                    | (TCR≥80% / TTFT≤1.2s / 成本≤$0.04 / RPO=0)  |
                     +----------------------+----------------------+
                                            |
                     +----------------------+----------------------+
@@ -74,7 +98,8 @@
 
 ---
 
-## 4. 架构委员会审计签署 (ARB Sign-off)
+## 5. 架构委员会审计签署 (ARB Sign-off)
 - **主导架构师**: APPROVED (2026-09-18)
+- **AI 算法与评测负责人**: APPROVED (2026-09-18)
 - **质量工程与测试代表**: APPROVED (2026-09-18)
 - **综合评审结论**: 准予进入下一阶段 (APPROVED TO PROCEED)
