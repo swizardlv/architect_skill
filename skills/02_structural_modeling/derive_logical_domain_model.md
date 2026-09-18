@@ -76,7 +76,7 @@ stateDiagram-v2
     MODELING --> CONTRACTED: 契约签署与 ADR 沉淀完成
     
     MODELING --> FAILED_RETRYABLE: 资产格式/一致性校验失败
-    FAILED_RETRYABLE --> MODELING: 注入负向假设账本并重试 [次数 < 3]
+    FAILED_RETRYABLE --> MODELING: "注入负向假设账本并重试 (次数 < 3)"
     FAILED_RETRYABLE --> FAILED_TERMINATED: 超出最大重试上限 [触发熔断回滚]
     
     CONTRACTED --> SCAFFOLDED: 物理骨架与防跑偏守则就绪
@@ -99,5 +99,6 @@ stateDiagram-v2
 - [ ] 划分了职责明确的限界上下文，聚合根具有排他性的事务一致性边界。
 - [ ] 实体与不可变值对象分类严谨。
 - [ ] Mermaid 状态机图完整覆盖了黄金主线、认知反思重试与终态熔断分支。
+- [ ] **Mermaid 语法转义合规**：连线文本若包含 `<` 或 `>` 等比较符号，必须使用双引号包裹（如 `"分支 (重试 < 3)"`），杜绝解析警告。
 - [ ] 状态图使用了高可读性配色分类（成功路径绿色、重试黄色、熔断红色）。
 - [ ] 产出物已持久化落盘至 `docs/architecture/02-models/domain-logical-model.md`。
