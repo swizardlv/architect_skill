@@ -15,6 +15,9 @@
 | **架构工件** | `ArchitectureArtifact` | 阶段推导输出的受版本管理的工程技术交付物（如 AOD、CM、OM、CDM、ADR）。 | 系统向干系人交付的价值凭证，不指代物理磁盘文件句柄。 |
 | **审查批注** | `ReviewFeedback` | 技术委员会评审人或自动化门禁引擎在工件审查时留下的整改意见或签署记录。 | 包含明确的处置决议与审计痕迹，具有治理约束力。 |
 | **统一词汇条目** | `GlossaryEntry` | 业务与技术团队共同认可并严格遵守的领域核心概念与统一语言定义。 | 跨工件一致性基准，消除跨团队沟通歧义。 |
+| **认知会话** | `CognitiveSession` | Agent 承载特定架构治理任务的完整多轮认知交互生命周期，包含 Token 预算与安全策略。 | 贯穿生命周期的认知容器，不同于单次无状态 HTTP 请求。 |
+| **执行步骤** | `ExecutionStep` | Agent 在单轮推导中产生的思考快照（Thought）、工具调用（Action）与环境反馈（Observation）。 | 一等公民实体，支持时间旅行重放调试（Time-travel Debugging）。 |
+| **负向假设** | `NegativeHypothesis` | 经沙箱验证失败或门禁拦截的错误探索路径与反思规则。 | 系统的“失败账本”，避免重试循环重复踩坑。 |
 
 ---
 
@@ -29,6 +32,11 @@ erDiagram
     ARCHITECTURE_ARTIFACT ||--o{ REVIEW_FEEDBACK : "接受审查 (Receives)"
     ARCHITECTURE_JOB ||--o{ GLOSSARY_ENTRY : "统一定义 (Defines)"
     GLOSSARY_ENTRY ||--o{ ARCHITECTURE_ARTIFACT : "规范约束 (Governs)"
+
+    %% Agent AI 认知轨迹与一等状态实体
+    ARCHITECTURE_JOB ||--o{ COGNITIVE_SESSION : "开辟执行 (Hosts)"
+    COGNITIVE_SESSION ||--|{ EXECUTION_STEP : "记录步骤 (Logs Steps)"
+    EXECUTION_STEP ||--o{ NEGATIVE_HYPOTHESIS : "沉淀证伪 (Generates)"
 
     ARCHITECTURE_JOB {
         string job_reference_id "架构任务唯一业务标识"
@@ -70,6 +78,27 @@ erDiagram
         string business_definition "业务权威定义"
         string domain_context "适用限界子域"
     }
+
+    COGNITIVE_SESSION {
+        string session_reference_id "会话业务全局标识"
+        string autonomy_level "自主度等级 (LoA-1至LoA-4)"
+        number cumulative_token_cost "累计代币折算成本"
+        string execution_state "会话运行状态"
+    }
+
+    EXECUTION_STEP {
+        string step_sequence_id "步骤单调自增序号"
+        string thought_snapshot "模型单步思考快照"
+        string action_name "调用工具标识"
+        string observation_summary "沙箱反馈观察快照"
+        boolean has_side_effect "是否具有物理写副作用"
+    }
+
+    NEGATIVE_HYPOTHESIS {
+        string failed_path_hash "证伪路径特征签名"
+        string failure_root_cause "失败根因分类"
+        string anti_repetition_rule "防重复踩坑避障规则"
+    }
 ```
 
 ---
@@ -87,25 +116,28 @@ erDiagram
   - 任务推进必须遵循单向阶段流转，任何跳阶段行为均被阻断。
   - 只有在所有必需阶段里程碑均获得准出放行后，任务才能转为“已归档发布”。
 
-### 3.2 实体: 架构工件 (ArchitectureArtifact)
-- **归属概念子域**: 工业级工件生成与打磨域 (Artifact Polish & Delivery)
-- **核心商业特征**: 符合 IBM 架构思想与 C4 规范的顶层工程技术资产。
+### 3.2 实体: 执行步骤 (ExecutionStep)
+- **归属概念子域**: 轨迹可观测性与时间旅行重放域 (Trajectory Observability & Replay)
+- **核心商业特征**: Agent 探索与工具调用过程中的一等公民实体，记录思考快照、执行行动与沙箱反馈。
 - **关键业务属性**:
-  - `artifact_identifier`: 规范化的工件编号（如 AOD-001, CDM-001, ADR-001）。
-  - `artifact_category`: 工件分类（系统上下文、AOD、CM、OM、CDM、ADR、ARC）。
-  - `review_verdict`: 评审决议（草稿、审查打回、已签署生效）。
+  - `step_sequence_id`: 步骤序号。
+  - `thought_snapshot`: 模型思考快照（Thought）。
+  - `action_name`: 调用的具体工具名（Action）。
+  - `observation_summary`: 环境观察结果摘要（Observation）。
+  - `has_side_effect`: 标记是否修改了本地文件或触发了外部提交。
 - **核心业务不变量**:
-  - 工件生效前必须通过门禁断言判定且合规得分达标（100 分制）。
-  - 每次重大结构修订必须演进语义版本号。
+  - 步骤实体一经写入不可更改，严格按照时间序列只增追加。
+  - 若包含不可逆副作用，必须在对应工件中记录门禁审批通过标记。
 
-### 3.3 实体: 门禁断言 (GatekeeperAssertion)
-- **归属概念子域**: 质量守卫与合规仲裁域 (Quality Gatekeeping)
-- **核心商业特征**: 守护架构工件技术中立性、统一语言与结构严谨性的不可篡改规则判断。
+### 3.3 实体: 负向假设 (NegativeHypothesis)
+- **归属概念子域**: 失败反思与认知防线域 (Reflective Guardrails)
+- **核心商业特征**: 记录经事实证伪的代码实现或架构推导分支，充当“失败账本”。
 - **关键业务属性**:
-  - `rule_code`: 门禁规则编号（如 GK-CDM-NO-PHYSICAL-DB）。
-  - `compliance_score`: 自动化与专家联合评估的数值化质量分。
+  - `failed_path_hash`: 失败路径特征。
+  - `failure_root_cause`: 语法错误、单测失败、门禁打回或死循环阻断。
+  - `anti_repetition_rule`: 指导后续思考避免重复探索的规则。
 - **核心业务不变量**:
-  - 存在严重级门禁断言未通过时，里程碑的准出放行签署标志恒为 `false`。
+  - 当尝试相同路径连续报错 3 次时，强制触发死循环熔断并生成不可撤销的负向假设记录。
 
 ---
 
@@ -119,10 +151,13 @@ erDiagram
 | **`ArchitectureArtifact`** | 工件交付上下文 | `ArtifactBuilder` (COMP-03) | **独占写入 (Exclusive Write)** | 向评审引擎与渲染看板暴露视图 |
 | **`ReviewFeedback`** | 评审协作上下文 | `ReviewBoardHub` (COMP-04) | **独占写入 (Exclusive Write)** | 反馈修改意见并回传工件构建器 |
 | **`GlossaryEntry`** | 领域知识上下文 | `KnowledgeDictionary` (COMP-05) | **独占写入 (Exclusive Write)** | 为所有工件生成提供统一词汇对照表 |
+| **`CognitiveSession`** | 认知会话上下文 | `SessionGovernor` (COMP-06) | **独占写入 (Exclusive Write)** | 跟踪 Token 消耗与自主度授权 |
+| **`ExecutionStep`** | 轨迹审计上下文 | `TrajectoryAuditor` (COMP-07) | **追加写入 (Append-Only Write)** | 提供单步回溯与时间旅行重放调试 |
+| **`NegativeHypothesis`**| 反思避障上下文 | `ReflectionMemory` (COMP-08) | **独占写入 (Exclusive Write)** | 在规划循环前提供失败分支阻断依据 |
 
 ---
 
-## 5. 三步压力测试自检记录 (3-Step Stress Tests)
+## 5. 四步压力测试与“重放审计”自检记录 (Stress Tests & Replay Walkthrough)
 
 ### 5.1 业务代言人对齐走查测试 (Business Proxy Walkthrough)
 - **演练场景**: 首席架构师启动新交易系统设计任务，推导 AOD 与 CDM，在门禁校验中由于实体包含技术字段被拦截，经整改后顺利签署通过。
@@ -147,3 +182,8 @@ erDiagram
   - 确认仅 `GatekeeperGuard` 可生成和更新 `GatekeeperAssertion` 状态，工件构建器仅有读权限。
   - 确认 `ReviewFeedback` 仅由 `ReviewBoardHub` 维护，杜绝跨边界篡改评审记录。
 - **评审结论**: CDM 实体与逻辑组件边界严格映射，各司其职，保证系统的松耦合与内聚性。
+
+### 5.4 “重放与审计”实战验证测试 (The Replay Walkthrough)
+- **核验手段**: 选取一笔在文档打磨中被拦截违规写操作的 Agent 执行轨迹，依据 CDM 实体关系进行单步追溯。
+- **重放推演**: 依据 `ExecutionStep` 记录，成功还原出模型在第 3 步生成的推导思路（Thought）、调用的文件编辑指令与具体参数（Action），以及打磨器拦截扣分报错反馈（Observation），并验证了生成的 `NegativeHypothesis` 成功阻断了模型重复尝试该写操作。
+- **评审结论**: 概念实体支撑 100% 细节回溯与时间旅行重放调试（Time-travel Debugging），数据模型具备工业级可观测性与可审计性。

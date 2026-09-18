@@ -46,7 +46,38 @@
 
 ---
 
-## 4. 架构风格选型的“五维评判漏斗” (Evaluation Framework)
+## 4. Agent AI 时代专属认知风格与协作拓扑 (AI-Native Cognitive Styles)
+
+在 Agent AI 时代，系统的核心矛盾从“如何解耦业务领域”转变为“**如何在非确定性推理、状态爆炸与工程确定性之间取得平衡**”。主导架构范式演进为**认知循环（Cognitive Loops）与协同拓扑（Collaboration Topology）**：
+
+### 4.1 四大 AI 原生认知模式与拓扑
+1. **ReAct / Reflection 单体循环 (Single Agent Loops)**:
+   - **核心特征**: “思考 (Thought) $\to$ 行动 (Action) $\to$ 观察 (Observation) $\to$ 反思 (Reflection)”的自主闭环。
+   - **适用场景**: 探索性排障、代码缺陷定位、交互式数据探索分析。
+   - **妥协代价**: 响应延迟高、Token 消耗随重试次数非线性激增、易陷入死循环（如“土拨鼠之日”重复无效重试）。
+2. **多 Agent 协同拓扑 (Multi-Agent Collaboration)**:
+   - **分层主从拓扑 (Hierarchical Supervisor / Router)**: 高智商 Router 统一解析用户意图，拆解后派发给垂类 Worker Agent 执行；
+   - **对立审查拓扑 (Generator-Critic / Dual-Agent)**: 一个负责内容生成（Drafting），另一个负责挑刺核验（Critique）与事实合规，双向收敛；
+   - **流水线网格 (Choreography Pipeline)**: 明确阶段划分的串行接力，适用于流程固定的长作业任务。
+3. **认知分层架构 (Cognitive-Layered Architecture / Fast-Slow Thinking)**:
+   - **系统 1 (快思考 Fast Path)**: 规则匹配、向量检索与轻量模型拦截，毫秒级响应高频常见请求；
+   - **系统 2 (慢思考 Slow Path)**: 大参数思考模型（Reasoning Models）、多步规划与反思回路，专攻复杂长尾决策。
+4. **状态机驱动有向图架构 (Flow-Engineering / Graph-based Agent)**:
+   - 以显式图（StateGraph）将推理步骤严格工程化，打破纯黑盒自主调用，让状态流转具备确定性、可持久化与中断恢复能力。
+
+### 4.2 Agent 风格三维评判标准与反模式治理
+| 评估维度 | 传统思路陷阱 (反模式) | Agent 时代优秀标准 (IBM 标准) |
+| :--- | :--- | :--- |
+| **拓扑复杂度审查** | 盲目引入多 Agent 拟人化聊天（“架构师 Agent 找产品 Agent 开会”），消耗海量 Token 却产出极低。 | **奥卡姆剃刀原则**: 优先使用“单 Agent + 结构化工具”；仅在 Prompt 上下文严重超限、权限隔离冲突或工具集互斥时才拆分多 Agent。 |
+| **确定性与可控性** | 完全放权给大模型自主决策下一步调什么工具，缺乏死循环硬保护。 | **显式确定性围栏**: 循环必须设定最大步数硬限制（Max Steps）、支持人工挂起（Interrupt & Resume）、配备确定性状态机兜底。 |
+| **快慢思考分级** | 不分青红皂白，所有请求全量丢给昂贵的大参数深度思考模型。 | **显式意图路由层**: 简单查询由规则引擎或轻量模型快速返回，高价值复杂推理才激活多轮反思回路。 |
+
+### 4.3 “死循环防御”风格审查 (The Loop-Breaker Test)
+- **审查准则**: 当 Agent 调用工具连续报错达阈值（如连续 3 次）时，架构上绝不可寄希望于大模型“自主顿悟跳出”，必须由宿主容器或状态机强制介入截断，挂起会话并转交人工仲裁（HITL）。
+
+---
+
+## 5. 架构风格选型的“五维评判漏斗” (Evaluation Framework)
 
 所有选型必须逐层通过以下五道漏斗自检：
 
@@ -78,7 +109,7 @@
 
 ---
 
-## 5. 警惕架构师“三种中毒症状” (Anti-Patterns to Avoid)
+## 6. 警惕架构师“三种中毒症状” (Anti-Patterns to Avoid)
 1. **简历驱动架构 (Resume-Driven Architecture, RDA)**:
    - 为了在个人简历上彰显高大上技术栈，在简单内部管理系统中盲目引入 Service Mesh、复杂分库分表或分布式流计算。
 2. **银弹思维 (Silver Bullet Syndrome)**:
@@ -88,10 +119,11 @@
 
 ---
 
-## 6. Gatekeeper Exit Criteria (准出门禁自查清单)
+## 7. Gatekeeper Exit Criteria (准出门禁自查清单)
 在完成架构风格选型文档编制前，必须完成以下自检：
 - [ ] **宏观与微观分层清晰**：明确定义了系统的宏观主导风格（Macro Style）以及各子系统的局部微模式（Local Patterns）。
 - [ ] **ARC 质量指标强绑定**：明确指出选定该风格是为了满足 ARC 中的哪些具体性能、可用性或安全条款。
 - [ ] **风格多维权衡对比**：包含了至少 2~3 种候选架构风格的详细横向优缺点矩阵与否决理由。
+- [ ] **Agent 确定性与死循环防御合规**：若涉及 Agent 范式，必须设定 Max Steps 硬限制与状态机死循环强制拦截（通过 Loop-Breaker 测试）。
 - [ ] **通过五维评判漏斗**：完成了团队技能可行性、NFR 拟合度、逆转成本、TCO 预算对账与 ADR 关联验证。
 - [ ] **顶层 ADR 闭环**：该选型已正式同步映射至 `ADR-001` 等核心决策文件并形成不可篡改的工程法典。

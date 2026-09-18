@@ -452,6 +452,14 @@ class ArchitectureDocumentPolisher:
                 score -= 10
                 suggestions.append("架构风格选型未明确关联顶层架构决策记录 (ADR-001 等)")
 
+            # Agent AI 专属风格审查 (认知拓扑、快慢思考与死循环防御)
+            is_agent_style = bool(re.search(r"(Agent|智能体|ReAct|Reflection|StateGraph|认知循环|快思考|慢思考|Fast-Slow|Supervisor)", content, re.IGNORECASE))
+            if is_agent_style:
+                has_loop_breaker = bool(re.search(r"(死循环|Loop-Breaker|Max Steps|土拨鼠|强制截断|转人工|HITL)", content, re.IGNORECASE))
+                if not has_loop_breaker:
+                    score -= 15
+                    suggestions.append("Agent 架构风格选型缺少'死循环防御审查' (The Loop-Breaker Test: Max Steps 硬限制与状态机物理强制截断转人工)")
+
         # 13. Conceptual Data Model (CDM) 专属规范深度审计 (IBM 业务数据视角顶层抽象标准)
         is_cdm_file = "conceptual-data-model" in file_path.name.lower() or "cdm" in file_path.name.lower()
 
@@ -485,11 +493,24 @@ class ArchitectureDocumentPolisher:
                 score -= 15
                 suggestions.append("CDM 缺少'限界上下文与数据所有权矩阵' (Data Ownership Matrix: 映射至独占管理 CM 组件)")
 
-            # 检查三步压力测试 (Business Proxy, Lifecycle, CM Driving)
+            # 检查三步/四步压力测试 (Business Proxy, Lifecycle, CM Driving, Replay)
             has_stress_tests = bool(re.search(r"(压力测试|业务代言人|走查|生命周期完整性|驱动组件模型|Walkthrough)", content, re.IGNORECASE))
             if not has_stress_tests:
                 score -= 10
-                suggestions.append("CDM 缺少合格性'三步压力测试' (业务走查、生命周期完整性、驱动 CM 验证) 自检记录")
+                suggestions.append("CDM 缺少合格性压力测试 (业务走查、生命周期完整性、驱动 CM 验证) 自检记录")
+
+            # Agent AI 专属 CDM 深度审计 (一等公民实体、状态可复现性与重放审计)
+            is_agent_cdm = bool(re.search(r"(Agent|智能体|CognitiveSession|ExecutionStep|Thought|Action|Observation|记忆|Token|负向假设)", content, re.IGNORECASE))
+            if is_agent_cdm:
+                has_first_class_entities = bool(re.search(r"(Session|Turn|Step|Thought|Observation|Action|NegativeHypothesis|负向假设|认知会话|执行步骤)", content, re.IGNORECASE))
+                if not has_first_class_entities:
+                    score -= 15
+                    suggestions.append("Agent CDM 缺少认知轨迹一等公民实体 (Session, Turn, Step, Thought, Action, Observation, NegativeHypothesis)")
+
+                has_replay_walkthrough = bool(re.search(r"(Replay|重放|Time-travel|时间旅行|单步追溯|审计验证)", content, re.IGNORECASE))
+                if not has_replay_walkthrough:
+                    score -= 10
+                    suggestions.append("Agent CDM 缺少'重放与审计'实战验证 (The Replay Walkthrough: 还原历史单步推理与工具调用细节)")
 
         # 14. Utility Tree & ATAM 场景推演专属规范深度审计 (SEI / IBM 架构权衡分析法标准)
         is_atam_file = "utility-tree" in file_path.name.lower() or "atam" in file_path.name.lower()
