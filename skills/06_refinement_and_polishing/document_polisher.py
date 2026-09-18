@@ -749,6 +749,20 @@ class ArchitectureDocumentPolisher:
                 score -= 15
                 suggestions.append("ARB 评审缺少明确的'四大裁决结论之一'或'整改行动项 (Action Items)'与责任期限")
 
+            # Agent AI 专属 ARB 深度审计 (独立评测集盲测、Token 预算模型、物理熔断与一票否决红线)
+            is_agent_arb = bool(re.search(r"(Agent|智能体|LLM|大模型|Prompt|Token|沙箱|Evals)", content, re.IGNORECASE))
+            if is_agent_arb:
+                has_evals_and_budget = bool(re.search(r"(评测基准|Evals|Baseline|黄金测试集|盲测)", content, re.IGNORECASE)) and \
+                                       bool(re.search(r"(Token.*预算|Token.*成本|Token Budget Envelope|配额测算)", content, re.IGNORECASE))
+                if not has_evals_and_budget:
+                    score -= 15
+                    suggestions.append("Agent ARB 评审缺少'评测基准报告 (Evals Baseline Suite)'或'Token 成本模型与配额测算表'")
+
+                has_red_flags = bool(re.search(r"(一票否决|Red Flag|裸奔|断电开关|Kill Switch|物理熔断)", content, re.IGNORECASE))
+                if not has_red_flags:
+                    score -= 10
+                    suggestions.append("Agent ARB 评审缺少'一票否决红线核验' (裸奔 Agent、无量化评测、无断电开关 Kill Switch)")
+
         # 17. Automated Architecture Conformance & Compliance 架构合规扫描专项深度审计
         is_conformance_file = "conformance" in file_path.name.lower() or "compliance" in file_path.name.lower()
 
@@ -776,13 +790,13 @@ class ArchitectureDocumentPolisher:
                 suggestions.append("架构合规扫描缺少 CI/CD '违规即熔断 (Break the Build)' 强制拦截策略")
 
             # 检查测试规则与 CM 组件模型 1:1 映射
-            has_cm_mapping = bool(re.search(r"(CM-\d+|组件模型|映射|契约编号)", content, re.IGNORECASE))
+            has_cm_mapping = bool(re.search(r"(CM-\d+|COMP-\d+|组件模型|映射|契约编号)", content, re.IGNORECASE))
             if not has_cm_mapping:
                 score -= 15
-                suggestions.append("架构测试规则未与组件模型 (CM-00X) 建立 1:1 追溯映射")
+                suggestions.append("架构测试规则未与组件模型 (CM-00X / COMP-XXX) 建立 1:1 追溯映射")
 
             # 检查架构单元测试代码化用例 (ArchUnit / 架构即代码实现)
-            has_code_example = bool(re.search(r"(ArchTest|ArchRule|ArchUnit|@Test|classes|layeredArchitecture|assert)", content, re.IGNORECASE))
+            has_code_example = bool(re.search(r"(ArchTest|ArchRule|ArchUnit|@Test|classes|layeredArchitecture|assert|ast\.)", content, re.IGNORECASE))
             if not has_code_example:
                 score -= 15
                 suggestions.append("缺少'架构即测试 (Architecture as Tests)'代码化单元测试实录用例")
@@ -799,6 +813,19 @@ class ArchitectureDocumentPolisher:
             if not has_baseline_freezing:
                 score -= 10
                 suggestions.append("缺少面对存量系统的'基线冻结与增量零容忍'治理策略")
+
+            # Agent AI 专属合规扫描深度审计 (Tool Schema 强校验、Prompt 持续评测门禁、网关收敛防线)
+            is_agent_conformance = bool(re.search(r"(Agent|智能体|LLM|Tool|Schema|Prompt|Fuzzing|Guardrail)", content, re.IGNORECASE))
+            if is_agent_conformance:
+                has_tool_and_gateway = bool(re.search(r"(Tool.*Schema|强类型|Pydantic|网关收敛|LLM.*Gateway)", content, re.IGNORECASE))
+                if not has_tool_and_gateway:
+                    score -= 15
+                    suggestions.append("Agent 合规扫描缺少'Tool Schema 强类型校验'或'业务代码禁直连大模型 SDK 网关收敛防线'")
+
+                has_evals_and_fuzzing = bool(re.search(r"(Continuous Evals|持续评测|Smoke Evals|TCR.*衰减|Fuzzing|越狱|模糊测试)", content, re.IGNORECASE))
+                if not has_evals_and_fuzzing:
+                    score -= 10
+                    suggestions.append("Agent 合规扫描缺少'CI 持续评测门禁 (Continuous Evals)'或'对抗性安全模糊测试 (Fuzzing)'")
 
         # 18. Technical Debt Ledger (技术债务台账与治理) 专属规范深度审计
         is_debt_file = "technical-debt" in file_path.name.lower() or "debt-ledger" in file_path.name.lower()
@@ -820,15 +847,15 @@ class ArchitectureDocumentPolisher:
                 suggestions.append("技术债务缺少'本金(重构人天)'与'利息(摩擦成本与系统风险)'量化双重度量")
 
             # 检查关联架构资产回溯 (CM, OM, ADR, ARB Exemption)
-            has_arch_links = bool(re.search(r"(CM|OM|ADR|ARB|组件|决策|豁免)", content, re.IGNORECASE))
+            has_arch_links = bool(re.search(r"(CM|OM|ADR|ARB|COMP-|组件|决策|豁免)", content, re.IGNORECASE))
             if not has_arch_links:
                 score -= 15
                 suggestions.append("技术债务条目未明确关联上游架构资产 (CM组件、OM部署、ADR决策或ARB豁免)")
 
             # 检查偿还契约、截止到期日与责任人 (Repayment Contract & Due Date)
             has_repayment = bool(re.search(r"(偿还|Repayment|清偿|计划)", content, re.IGNORECASE)) and \
-                            bool(re.search(r"(截止|到期|Due\s*Date|期限|Sprint|202\d-\d{2}-\d{2})", content, re.IGNORECASE)) and \
-                            bool(re.search(r"(责任人|Owner|批准人)", content, re.IGNORECASE))
+                             bool(re.search(r"(截止|到期|Due\s*Date|期限|Sprint|202\d-\d{2}-\d{2})", content, re.IGNORECASE)) and \
+                             bool(re.search(r"(责任人|Owner|批准人)", content, re.IGNORECASE))
             if not has_repayment:
                 score -= 15
                 suggestions.append("技术债务缺少明确的'偿还契约' (承接责任人、批准人与具体截止到期日/Sprint)")
@@ -844,6 +871,14 @@ class ArchitectureDocumentPolisher:
             if not has_status_lifecycle:
                 score -= 10
                 suggestions.append("技术债务台账缺少规范的状态流转字段 (Active / Repaid / Accepted)")
+
+            # Agent AI 专属认知技术债务审计 (提示词打补丁、上下文未修剪、专有模型锁定、评测滞后)
+            is_agent_debt = bool(re.search(r"(Agent|智能体|LLM|Prompt|Token|上下文|模型锁定|Evals)", content, re.IGNORECASE))
+            if is_agent_debt:
+                has_cognitive_debts = bool(re.search(r"(提示词打补丁|Prompt-Patching|上下文.*修剪|Context Bloat|模型锁定|Model Lock-in|评测滞后|Evaluation Debt)", content, re.IGNORECASE))
+                if not has_cognitive_debts:
+                    score -= 15
+                    suggestions.append("Agent 技债台账缺少专属认知债务识别 (如提示词打补丁债务、上下文未修剪债务、模型锁定债务、评测滞后债务)")
 
         score = max(0, min(100, score))
 
