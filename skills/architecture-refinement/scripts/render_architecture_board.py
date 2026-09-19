@@ -1433,21 +1433,26 @@ def resolve_project_display_name(ws: Path, given_name: str) -> str:
     if given_name and given_name != "Architecture Lifecycle Canvas":
         return given_name
 
-    # 尝试从文档提取标题（纯数据驱动，适用于任何案例）
+    # 尝试从文档提取标题（优先提取专门的 README 架构总索引标题）
     doc_paths = [
+        ws / "README.md",
+        ws.parent / "README.md",
         ws / "01-requirements" / "01-01-business-drivers.md",
         ws / "02-architecture-design" / "02-01-system-overview.md",
-        ws / "README.md",
     ]
+    generic_titles = (
+        "Business Drivers & Goals", "System Architecture Overview",
+        "业务驱动力与商业目标", "业务驱动力", "系统全局概览与物理-计算拓扑",
+        "系统全局概览", "Architecture Lifecycle Canvas"
+    )
     for dp in doc_paths:
         if dp.exists():
             try:
                 for line in dp.read_text(encoding="utf-8").splitlines():
                     line = line.strip()
                     if line.startswith("# "):
-                        # 去除可能存在的类似 # [01-01] 前缀
-                        clean = re.sub(r"^#\s*(\[\d{2}-\d{2}\])?\s*", "", line).strip()
-                        if clean and len(clean) >= 3 and clean not in ("Business Drivers & Goals", "System Architecture Overview"):
+                        clean = re.sub(r"^#\s*(\[\d{2}-\d{2}\])?\s*(\d{2}-\d{2})?\s*", "", line).strip()
+                        if clean and len(clean) >= 3 and not any(gt in clean for gt in generic_titles):
                             return clean
             except Exception:
                 pass
