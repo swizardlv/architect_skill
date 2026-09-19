@@ -175,6 +175,11 @@ def validate_mermaid_syntax(code: str) -> Tuple[bool, str]:
     if matches:
         return False, f"节点文本包含未加双引号的 '<' 或 '>' 字符: '{matches[0]}'，必须使用双引号包裹"
 
+    # 检查不合法的箭头连接符号 (如 -.x 等)
+    invalid_arrows = re.findall(r"(-\.x|--\.x)", cleaned)
+    if invalid_arrows:
+        return False, f"检测到不合法的 Mermaid 连线箭头语法: '{invalid_arrows[0]}'"
+
     return True, ""
 
 
@@ -397,6 +402,13 @@ def build_interactive_html(
     }}
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script>
+    if (typeof katex === "undefined") {{
+      document.write('<script src="https://unpkg.com/katex@0.16.9/dist/katex.min.js"><\\/script>');
+    }}
+  </script>
   <style>
     :root {{
       --bg-primary: #0f172a;
@@ -804,6 +816,35 @@ def build_interactive_html(
       font-family: ui-monospace, Menlo, Consolas, monospace;
       font-size: 13px;
     }}
+    .doc-mermaid-wrapper {{
+      margin: 24px 0;
+      padding: 20px;
+      background: var(--bg-board);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      text-align: center;
+      overflow-x: auto;
+    }}
+    .doc-mermaid-wrapper svg {{
+      max-width: 100%;
+      height: auto;
+    }}
+    .katex-render-target {{
+      display: inline;
+    }}
+    div.katex-render-target {{
+      display: block;
+      margin: 16px 0;
+      text-align: center;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 8px 0;
+    }}
+    .katex-display {{
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 8px 0;
+    }}
     .zoom-toolbar {{
       position: absolute;
       bottom: 64px;
@@ -1108,10 +1149,93 @@ def build_interactive_html(
         markdownSource = item.raw_content;
       }}
 
+      // 预处理数学公式：保护代码块，避免代码块内部的字符或符号被误当作数学公式提取
+      const codeBlocks = [];
+      let masked = markdownSource.replace(/(```[\\s\\S]*?```|`[^`\\n]+`)/g, (match) => {{
+        const token = `@@@CODEBLOCK_${{codeBlocks.length}}@@@`;
+        codeBlocks.push(match);
+        return token;
+      }});
+
+      const mathItems = [];
+      // 1. 块级公式 $$...$$
+      masked = masked.replace(/\\$\\$([\\s\\S]+?)\\$\\$/g, (match, formula) => {{
+        const idx = mathItems.length;
+        mathItems.push({{ formula: formula.trim(), display: true }});
+        return `<div class="katex-render-target" data-math-id="${{idx}}"></div>`;
+      }});
+
+      // 2. 行内公式 $...$
+      masked = masked.replace(/\\$([^\\$\\n]+?)\\$/g, (match, formula) => {{
+        const idx = mathItems.length;
+        mathItems.push({{ formula: formula.trim(), display: false }});
+        return `<span class="katex-render-target" data-math-id="${{idx}}"></span>`;
+      }});
+
+      // 3. 还原代码块
+      const restored = masked.replace(/@@@CODEBLOCK_(\\d+)@@@/g, (_, idx) => {{
+        return codeBlocks[parseInt(idx, 10)] || "";
+      }});
+
       if (typeof marked !== "undefined") {{
-        target.innerHTML = marked.parse(markdownSource);
+        target.innerHTML = marked.parse(restored);
       }} else {{
-        target.innerHTML = `<pre>${{markdownSource}}</pre>`;
+        target.innerHTML = `<pre>${{restored}}</pre>`;
+      }}
+
+      // 1. 渲染 LaTeX 数学公式 (支持行内 $...$ 与独立块级 $$...$$)
+      if (typeof katex !== "undefined") {{
+        target.querySelectorAll(".katex-render-target").forEach(el => {{
+          const idx = parseInt(el.getAttribute("data-math-id"), 10);
+          const item = mathItems[idx];
+          if (item) {{
+            try {{
+              katex.render(item.formula, el, {{
+                displayMode: item.display,
+                throwOnError: false
+              }});
+            }} catch (mathErr) {{
+              console.warn("KaTeX 公式渲染告警:", mathErr);
+              el.textContent = (item.display ? "$$" : "$") + item.formula + (item.display ? "$$" : "$");
+            }}
+          }}
+        }});
+      }}
+
+      // 2. 渲染详细设计规约中的全部内嵌 Mermaid 架构拓扑
+      if (typeof mermaid !== "undefined") {{
+        const mermaidBlocks = target.querySelectorAll("pre code.language-mermaid, pre code.lang-mermaid");
+        mermaidBlocks.forEach((codeEl, idx) => {{
+          const rawCode = codeEl.textContent.trim();
+          if (!rawCode) return;
+          const preEl = codeEl.closest("pre");
+          if (!preEl || !preEl.parentNode) return;
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "doc-mermaid-wrapper";
+          const uniqueId = "docMermaid_" + Math.floor(Math.random() * 100000000);
+          wrapper.id = uniqueId;
+
+          preEl.parentNode.replaceChild(wrapper, preEl);
+
+          try {{
+            mermaid.render(uniqueId + "_svg", rawCode).then(result => {{
+              wrapper.innerHTML = result.svg;
+              if (result.bindFunctions) {{
+                result.bindFunctions(wrapper);
+              }}
+              const svgEl = wrapper.querySelector("svg");
+              if (svgEl) {{
+                svgEl.style.maxWidth = "100%";
+                svgEl.style.height = "auto";
+              }}
+            }}).catch(err => {{
+              wrapper.innerHTML = `<div style="color: #ef4444; font-size: 12px; text-align: left; background: var(--card-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border);"><div style="font-weight: 600; margin-bottom: 6px;">⚠️ Mermaid 图表语法解析异常:</div><pre style="margin: 0; font-size: 11px; overflow-x: auto; background: var(--bg-board); padding: 8px; border-radius: 4px;">${{rawCode}}</pre><div style="margin-top: 6px; color: var(--text-secondary);">${{err.message || err}}</div></div>`;
+            }});
+          }} catch (syncErr) {{
+            wrapper.innerHTML = `<div style="color: #ef4444; font-size: 12px;">渲染调用异常: ${{syncErr}}</div>`;
+          }}
+        }});
       }}
     }}
 
